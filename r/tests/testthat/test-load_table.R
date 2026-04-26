@@ -1,25 +1,24 @@
 skip_on_cran()
 
 dbsnp <- function(...) {
-  load_dataset(
+  load_table(
     "dbsnp.vcf",
-    build = "b157",
     assembly = "GRCh38",
     chromosome = "22",
     ...
   )
 }
 
-test_that("errors on unknown dataset", {
+test_that("errors on unknown table", {
   expect_error(
-    load_dataset("not_a_dataset"),
+    load_table("not_a_table"),
     "not found in catalog"
   )
 })
 
 test_that("errors on missing filters", {
   expect_error(
-    load_dataset("dbsnp.vcf"),
+    load_table("dbsnp.vcf"),
     "Missing required filters"
   )
 })
@@ -33,9 +32,8 @@ test_that("errors on unknown filter", {
 
 test_that("errors on invalid allowed value", {
   expect_error(
-    load_dataset(
+    load_table(
       "dbsnp.vcf",
-      build = "b157",
       assembly = "INVALID",
       chromosome = "22"
     ),
@@ -45,9 +43,8 @@ test_that("errors on invalid allowed value", {
 
 test_that("coerces int to string", {
 
-  result <- load_dataset(
+  result <- load_table(
     "dbsnp.vcf",
-    build = "b157",
     assembly = "GRCh38",
     chromosome = 22
   )
@@ -56,9 +53,8 @@ test_that("coerces int to string", {
 
 test_that("coerces case", {
 
-  result <- load_dataset(
+  result <- load_table(
     "dbsnp.vcf",
-    build = "b157",
     assembly = "grch38",
     chromosome = "22"
   )
@@ -67,7 +63,7 @@ test_that("coerces case", {
 
 test_that("no filters needed for dummy partition", {
 
-  result <- load_dataset("ukb_ppp.assays")
+  result <- load_table("ukb_ppp.assays")
   expect_s3_class(result, "tbl_lazy")
 })
 

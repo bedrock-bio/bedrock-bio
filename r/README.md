@@ -6,20 +6,20 @@ Open-Access Computational Biology Datasets
 ## Description
 
 Efficiently access a curated library of open-access computational biology
-datasets. Datasets support predicate pushdown and projection to the cloud
+datasets. Tables support predicate pushdown and projection to the cloud
 storage backend, enabling quick, iterative access to otherwise massive,
-unwieldy datasets.
+unwieldy tables.
 
 `bedrockbio` consists of three user-facing functions:
 
-- `list_datasets()`: returns a character vector of available dataset identifiers
-- `describe_dataset("<name>")`: returns metadata, citation, and column
-  definitions for a dataset
-- `load_dataset("<name>", ...)`: takes a dataset name and required partition
+- `list_tables()`: returns a character vector of available table identifiers
+- `describe_table("<name>")`: returns metadata, citation, and column
+  definitions for a table
+- `load_table("<name>", ...)`: takes a table name and required partition
   filters, and returns a lazily-evaluated data frame
 
 `dplyr` verbs (`filter`, `select`) can be used on the data frame returned by
-`load_dataset` to push down additional row filters and column selections to the
+`load_table` to push down additional row filters and column selections to the
 storage backend.
 
 ## Installation
@@ -47,23 +47,23 @@ library(bedrockbio)
 library(dplyr)
 ```
 
-List available datasets:
+List available tables:
 
 ```r
-list_datasets()
+list_tables()
 ```
 
-Describe a dataset to see its metadata, citation, and columns:
+Describe a table to see its metadata, citation, and columns:
 
 ```r
-describe_dataset("ukb_ppp.pqtls")
+describe_table("ukb_ppp.pqtls")
 ```
 
-Lazily load a dataset with required partition filters, select columns, and
+Lazily load a table with required partition filters, select columns, and
 collect the relevant subset into an in-memory data frame:
 
 ```r
-df <- load_dataset(
+df <- load_table(
   "ukb_ppp.pqtls",
   ancestry = "EUR",
   protein_id = "A0FGR8",
@@ -82,5 +82,5 @@ df <- load_dataset(
 
 ## Dataset Requests
 
-To request the addition of a new dataset to the library, open an
+To request the addition of a new table to the library, open an
 [issue](https://github.com/bedrock-bio/bedrock-bio-client/issues).
