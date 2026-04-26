@@ -58,9 +58,7 @@ class TestLoadTable:
         assert result.columns == ["chromosome", "position"]
 
     def test_filter(self):
-        result = load_table(
-            "dbsnp.vcf", assembly="GRCh38", chromosome="22"
-        ).limit(5)
+        result = load_table("dbsnp.vcf", assembly="GRCh38", chromosome="22").limit(5)
         rows = result.fetchall()
         assert len(rows) == 5
 
