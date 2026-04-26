@@ -1,23 +1,22 @@
 import duckdb
 import pytest
 
-from bedrock_bio.load_dataset import load_dataset
+from bedrock_bio.load_table import load_table
 
 
-class TestLoadDataset:
-    def test_no_dataset(self):
+class TestLoadTable:
+    def test_no_table(self):
         with pytest.raises(ValueError, match="not found in catalog"):
-            load_dataset("not_a_dataset")
+            load_table("not_a_table")
 
     def test_missing_filters(self):
         with pytest.raises(ValueError, match="Missing required filters"):
-            load_dataset("dbsnp.vcf")
+            load_table("dbsnp.vcf")
 
     def test_unknown_filter(self):
         with pytest.raises(ValueError, match="Unknown filters"):
-            load_dataset(
+            load_table(
                 "dbsnp.vcf",
-                build="b157",
                 assembly="GRCh38",
                 chromosome="22",
                 fake="value",
@@ -25,51 +24,42 @@ class TestLoadDataset:
 
     def test_invalid_allowed_value(self):
         with pytest.raises(ValueError, match="Invalid value"):
-            load_dataset("dbsnp.vcf", build="b157", assembly="INVALID", chromosome="22")
+            load_table("dbsnp.vcf", assembly="INVALID", chromosome="22")
 
     def test_coerces_int_to_string(self):
-        result = load_dataset(
-            "dbsnp.vcf", build="b157", assembly="GRCh38", chromosome=22
-        )
+        result = load_table("dbsnp.vcf", assembly="GRCh38", chromosome=22)
         assert isinstance(result, duckdb.DuckDBPyRelation)
 
     def test_coerces_case(self):
-        result = load_dataset(
-            "dbsnp.vcf", build="b157", assembly="grch38", chromosome="22"
-        )
+        result = load_table("dbsnp.vcf", assembly="grch38", chromosome="22")
         assert isinstance(result, duckdb.DuckDBPyRelation)
 
     def test_no_filters_for_dummy_partition(self):
-        result = load_dataset("ukb_ppp.assays")
+        result = load_table("ukb_ppp.assays")
         assert isinstance(result, duckdb.DuckDBPyRelation)
 
     def test_filters_in_query(self):
-        result = load_dataset(
-            "dbsnp.vcf", build="b157", assembly="GRCh38", chromosome="22"
-        )
+        result = load_table("dbsnp.vcf", assembly="GRCh38", chromosome="22")
         plan = result.explain()
-        assert "build" in plan
         assert "assembly" in plan
         assert "chromosome" in plan
 
     def test_collect(self):
-        result = load_dataset(
-            "dbsnp.vcf", build="b157", assembly="GRCh38", chromosome="22"
-        )
+        result = load_table("dbsnp.vcf", assembly="GRCh38", chromosome="22")
         rows = result.limit(5).fetchall()
         assert len(rows) == 5
 
     def test_select(self):
         result = (
-            load_dataset("dbsnp.vcf", build="b157", assembly="GRCh38", chromosome="22")
+            load_table("dbsnp.vcf", assembly="GRCh38", chromosome="22")
             .select("chromosome", "position")
             .limit(5)
         )
         assert result.columns == ["chromosome", "position"]
 
     def test_filter(self):
-        result = load_dataset(
-            "dbsnp.vcf", build="b157", assembly="GRCh38", chromosome="22"
+        result = load_table(
+            "dbsnp.vcf", assembly="GRCh38", chromosome="22"
         ).limit(5)
         rows = result.fetchall()
         assert len(rows) == 5

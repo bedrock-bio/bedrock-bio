@@ -1,19 +1,19 @@
 from .config import config
 
 
-def describe_dataset(name: str) -> dict:
+def describe_table(name: str) -> dict:
     """
-    Describe a dataset's metadata, citation, and columns.
+    Describe a table's metadata, citation, and columns.
 
     Parameters
     ----------
     name : str
-        Dataset identifier (e.g. 'ukb_ppp.pqtls').
+        Table identifier (e.g. 'ukb_ppp.pqtls').
 
     Returns
     -------
     dict
-        Dataset metadata including description, citation, source_url,
+        Table metadata including description, citation, source_url,
         license, and column definitions.
 
     Raises
@@ -21,12 +21,12 @@ def describe_dataset(name: str) -> dict:
     ConnectionError
         If the catalog cannot be accessed.
     ValueError
-        If the dataset is not found in the catalog.
+        If the table is not found in the catalog.
 
     Examples
     --------
     >>> import bedrock_bio as bb
-    >>> info = bb.describe_dataset('ukb_ppp.pqtls')
+    >>> info = bb.describe_table('ukb_ppp.pqtls')
     >>> info['name']
     'ukb_ppp.pqtls'
 
@@ -35,8 +35,8 @@ def describe_dataset(name: str) -> dict:
 
     if name not in catalog:
         raise ValueError(
-            f"Dataset '{name}' not found in catalog. "
-            f"See list_datasets() for available datasets."
+            f"Table '{name}' not found in catalog. "
+            f"See list_tables() for available tables."
         )
 
     entry = catalog[name]

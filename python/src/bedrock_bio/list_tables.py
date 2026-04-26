@@ -1,14 +1,14 @@
 from .config import config
 
 
-def list_datasets() -> list[str]:
+def list_tables() -> list[str]:
     """
-    List available datasets in the Bedrock Bio library.
+    List available tables in the Bedrock Bio library.
 
     Returns
     -------
     list[str]
-        A list of dataset identifiers (e.g. 'ukb_ppp.pqtls').
+        A list of table identifiers (e.g. 'ukb_ppp.pqtls').
 
     Raises
     ------
@@ -18,7 +18,7 @@ def list_datasets() -> list[str]:
     Examples
     --------
     >>> import bedrock_bio as bb
-    >>> bb.list_datasets()
+    >>> bb.list_tables()
     ['ukb_ppp.pqtls', ...]
 
     """

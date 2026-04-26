@@ -1,7 +1,7 @@
-# bedrockbio 1.2.1
+# bedrockbio 1.3.0
 
 * Initial CRAN submission.
-* `list_datasets()`: list available datasets.
-* `load_dataset()`: lazily query a dataset with required partition filters and
+* `list_tables()`: list available tables.
+* `load_table()`: lazily query a table with required partition filters and
   predicate pushdown via 'DuckDB' and 'Apache Iceberg'.
-* `describe_dataset()`: view dataset metadata, citation, and column definitions.
+* `describe_table()`: view table metadata, citation, and column definitions.

@@ -1,22 +1,24 @@
-#' Describe a dataset's metadata, citation, and columns
+#' Describe a table's metadata, citation, and columns
 #'
-#' @param name Dataset identifier (e.g., "ukb_ppp.pqtls")
+#' @param name Table identifier (e.g., "ukb_ppp.pqtls")
 #' @returns A named list with name, description, citation, source_url,
 #'   license, and columns.
 #'
-#' @examplesIf bedrockbio:::has_connection()
+#' @examples
+#' \dontrun{
 #' library(bedrockbio)
-#' info <- describe_dataset("ukb_ppp.pqtls")
+#' info <- describe_table("ukb_ppp.pqtls")
 #' info$name
+#' }
 #'
 #' @export
-describe_dataset <- function(name) {
+describe_table <- function(name) {
   catalog <- get_catalog()
 
   if (!name %in% names(catalog)) {
     stop(
-      "Dataset '", name, "' not found in catalog. ",
-      "See list_datasets() for available datasets.",
+      "Table '", name, "' not found in catalog. ",
+      "See list_tables() for available tables.",
       call. = FALSE
     )
   }

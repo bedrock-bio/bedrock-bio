@@ -1,32 +1,33 @@
-#' Lazily query a dataset
+#' Lazily query a table
 #'
-#' @param name Dataset identifier (e.g., "ukb_ppp.pqtls")
+#' @param name Table identifier (e.g., "ukb_ppp.pqtls")
 #' @param ... Required partition filters
 #'   (e.g., ancestry = "EUR", protein_id = "A0FGR8")
 #' @returns A lazy `tbl` backed by DuckDB, compatible with dplyr verbs.
 #'
-#' @examplesIf bedrockbio:::has_connection()
+#' @examples
+#' \dontrun{
 #' library(bedrockbio)
 #' library(dplyr)
 #'
-#' df <- load_dataset(
+#' df <- load_table(
 #'   "dbsnp.vcf",
-#'   build = "b157",
 #'   assembly = "GRCh38",
 #'   chromosome = "22"
 #' ) |>
 #'   select(rsid, position, ref_allele, alt_allele) |>
 #'   head(5) |>
 #'   collect()
+#' }
 #'
 #' @export
-load_dataset <- function(name, ...) {
+load_table <- function(name, ...) {
   catalog <- get_catalog()
 
   if (!name %in% names(catalog)) {
     stop(
-      "Dataset '", name, "' not found in catalog. ",
-      "See list_datasets() for available datasets.",
+      "Table '", name, "' not found in catalog. ",
+      "See list_tables() for available tables.",
       call. = FALSE
     )
   }

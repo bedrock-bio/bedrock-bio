@@ -124,14 +124,3 @@ get_connection <- function() {
 
   pkg$conn
 }
-
-#' @noRd
-has_connection <- function() {
-  tryCatch(
-    {
-      get_connection()
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-}

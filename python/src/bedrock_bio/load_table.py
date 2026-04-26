@@ -3,14 +3,14 @@ import duckdb
 from .config import config
 
 
-def load_dataset(name: str, **filters: str) -> duckdb.DuckDBPyRelation:
+def load_table(name: str, **filters: str) -> duckdb.DuckDBPyRelation:
     """
-    Lazily query a dataset.
+    Lazily query a table.
 
     Parameters
     ----------
     name : str
-        Dataset identifier (e.g. 'ukb_ppp.pqtls').
+        Table identifier (e.g. 'ukb_ppp.pqtls').
     **filters : str
         Required partition filters (e.g. ancestry='EUR', protein_id='A0FGR8').
 
@@ -24,14 +24,14 @@ def load_dataset(name: str, **filters: str) -> duckdb.DuckDBPyRelation:
     ConnectionError
         If the catalog cannot be accessed.
     ValueError
-        If the dataset is not found, required filters are missing,
+        If the table is not found, required filters are missing,
         unknown filters are passed, or filter values are invalid.
 
     Examples
     --------
     >>> import bedrock_bio as bb
     >>>
-    >>> rel = bb.load_dataset('dbsnp.vcf', build='b157', assembly='GRCh38', chromosome='22')
+    >>> rel = bb.load_table('dbsnp.vcf', assembly='GRCh38', chromosome='22')
     >>> rel = rel.select('rsid, position, ref_allele, alt_allele')
     >>> df = rel.limit(5).fetchdf()
 
@@ -40,8 +40,8 @@ def load_dataset(name: str, **filters: str) -> duckdb.DuckDBPyRelation:
 
     if name not in catalog:
         raise ValueError(
-            f"Dataset '{name}' not found in catalog. "
-            f"See list_datasets() for available datasets."
+            f"Table '{name}' not found in catalog. "
+            f"See list_tables() for available tables."
         )
 
     entry = catalog[name]

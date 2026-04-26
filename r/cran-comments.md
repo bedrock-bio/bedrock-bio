@@ -7,6 +7,8 @@
   Windows (R on Windows uses MinGW, and the iceberg extension has no
   MinGW build). See https://github.com/duckdb/duckdb-iceberg for
   upstream status.
+* Examples are wrapped in \dontrun{} because they require network
+  access that is not available on the CRAN build farm.
 
 ## Test environments
 

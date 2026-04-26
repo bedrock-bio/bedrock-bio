@@ -1,9 +1,9 @@
-from bedrock_bio.list_datasets import list_datasets
+from bedrock_bio.list_tables import list_tables
 
 
-class TestListDatasets:
+class TestListTables:
     def test_returns_list_of_strings(self):
-        result = list_datasets()
+        result = list_tables()
         assert isinstance(result, list)
         for name in result:
             assert isinstance(name, str)
