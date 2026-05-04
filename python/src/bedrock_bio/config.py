@@ -33,17 +33,6 @@ class Config:
         self.catalog = {}
         for ns, ns_data in raw["namespaces"].items():
             for table, meta in ns_data["tables"].items():
-                partition_by = meta.get("partition_by", [])
-                required_filters = [p for p in partition_by if p != "partition"]
-
-                allowed_values = {}
-                if required_filters:
-                    columns_by_name = {c["name"]: c for c in meta.get("columns", [])}
-                    for f in required_filters:
-                        col = columns_by_name.get(f)
-                        if col and "allowed_values" in col:
-                            allowed_values[f] = col["allowed_values"]
-
                 columns = [
                     {
                         k: col[k]
@@ -61,8 +50,8 @@ class Config:
 
                 self.catalog[f"{ns}.{table}"] = {
                     "metadata_json": meta["metadata_json"],
-                    "required_filters": required_filters,
-                    "allowed_values": allowed_values,
+                    "partition_by": list(meta.get("partition_by", [])),
+                    "sort_by": list(meta.get("sort_by", [])),
                     "description": meta.get("description", ""),
                     "citation": ns_data.get("citation"),
                     "source_url": ns_data.get("source_url", ""),

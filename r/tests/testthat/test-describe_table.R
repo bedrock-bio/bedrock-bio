@@ -15,6 +15,8 @@ test_that("returns expected fields", {
   expect_type(result$citation, "list")
   expect_type(result$source_url, "character")
   expect_type(result$license, "character")
+  expect_type(result$partition_by, "character")
+  expect_type(result$sort_by, "character")
   expect_type(result$columns, "list")
   expect_true(length(result$columns) > 0)
 })

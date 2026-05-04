@@ -30,19 +30,8 @@ get_catalog <- function() {
       meta <- tables[[table_name]]
       partition_by <- meta$partition_by
       if (is.null(partition_by)) partition_by <- character(0)
-      required_filters <- partition_by[partition_by != "partition"]
-
-      allowed_values <- list()
-      if (length(required_filters) > 0 && length(meta$columns) > 0) {
-        col_names <- vapply(meta$columns, function(c) c$name, character(1))
-        for (f in required_filters) {
-          idx <- match(f, col_names)
-          if (!is.na(idx) && !is.null(meta$columns[[idx]]$allowed_values)) {
-            av <- meta$columns[[idx]]$allowed_values
-            allowed_values[[f]] <- as.character(av)
-          }
-        }
-      }
+      sort_by <- meta$sort_by
+      if (is.null(sort_by)) sort_by <- character(0)
 
       keep <- c(
         "name", "type", "description",
@@ -55,8 +44,8 @@ get_catalog <- function() {
       ns_data <- raw$namespaces[[ns]]
       entries[[paste0(ns, ".", table_name)]] <- list(
         metadata_json = meta$metadata_json,
-        required_filters = required_filters,
-        allowed_values = allowed_values,
+        partition_by = as.character(partition_by),
+        sort_by = as.character(sort_by),
         description = meta$description,
         citation = ns_data$citation,
         source_url = ns_data$source_url,

@@ -16,6 +16,8 @@ class TestDescribeTable:
         assert isinstance(result["citation"], dict)
         assert isinstance(result["source_url"], str)
         assert isinstance(result["license"], str)
+        assert isinstance(result["partition_by"], list)
+        assert isinstance(result["sort_by"], list)
         assert isinstance(result["columns"], list)
         assert len(result["columns"]) > 0
 

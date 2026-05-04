@@ -12,8 +12,9 @@ class TestConfig:
             assert isinstance(key, str)
             assert isinstance(entry, dict)
             assert isinstance(entry["metadata_json"], str)
-            assert isinstance(entry["required_filters"], list)
-            assert isinstance(entry["allowed_values"], dict)
+            assert isinstance(entry["partition_by"], list)
+            assert isinstance(entry["sort_by"], list)
+            assert isinstance(entry["columns"], list)
 
     def test_catalog_caches_result(self):
         first = config.get_catalog()

@@ -20,8 +20,9 @@ test_that("get_catalog returns a named list of entry lists", {
   for (entry in result) {
     expect_type(entry, "list")
     expect_type(entry$metadata_json, "character")
-    expect_type(entry$required_filters, "character")
-    expect_type(entry$allowed_values, "list")
+    expect_type(entry$partition_by, "character")
+    expect_type(entry$sort_by, "character")
+    expect_type(entry$columns, "list")
   }
 })
 
