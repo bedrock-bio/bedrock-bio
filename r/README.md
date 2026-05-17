@@ -15,7 +15,7 @@ unwieldy tables.
 - `list_tables()`: returns a character vector of available table identifiers
 - `describe_table("<name>")`: returns metadata, citation, and column
   definitions for a table
-- `load_table("<name>", ...)`: takes a table name and required partition
+- `load_table("<name>", ...)`: takes a table name and optional partition
   filters, and returns a lazily-evaluated data frame
 
 `dplyr` verbs (`filter`, `select`) can be used on the data frame returned by
@@ -59,8 +59,8 @@ Describe a table to see its metadata, citation, and columns:
 describe_table("ukb_ppp.pqtls")
 ```
 
-Lazily load a table with required partition filters, select columns, and
-collect the relevant subset into an in-memory data frame:
+Lazily load a table (optionally with partition filters for partitioned tables), 
+select columns, and collect the relevant subset into an in-memory data frame:
 
 ```r
 df <- load_table(

@@ -9,9 +9,8 @@ load_table(name, ...)
 \arguments{
 \item{name}{Table identifier (e.g., "ukb_ppp.pqtls")}
 
-\item{...}{Required partition filters
+\item{...}{Optional partition filters
 (e.g., ancestry = "EUR", protein_id = "A0FGR8")}
-}
 \value{
 A lazy \code{tbl} backed by DuckDB, compatible with dplyr verbs.
 }
