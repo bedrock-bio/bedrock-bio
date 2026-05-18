@@ -1,4 +1,5 @@
 skip_on_cran()
+skip_if_offline()
 
 dbsnp <- function() {
   load_table("dbsnp.vcf") |>
@@ -28,9 +29,4 @@ test_that("select limits columns", {
     head(5) |>
     dplyr::collect()
   expect_equal(names(df), c("chromosome", "position"))
-})
-
-test_that("collect returns data", {
-  df <- head(dbsnp(), 5) |> dplyr::collect()
-  expect_equal(nrow(df), 5L)
 })

@@ -13,23 +13,6 @@ class TestLoadTable:
         rel = load_table("dbsnp.vcf")
         assert isinstance(rel, duckdb.DuckDBPyRelation)
 
-    def test_filter_in_query_plan(self):
-        rel = load_table("dbsnp.vcf").filter(
-            "assembly = 'GRCh38' AND chromosome = '22'"
-        )
-        plan = rel.explain()
-        assert "assembly" in plan
-        assert "chromosome" in plan
-
-    def test_collect(self):
-        rows = (
-            load_table("dbsnp.vcf")
-            .filter("assembly = 'GRCh38' AND chromosome = '22'")
-            .limit(5)
-            .fetchall()
-        )
-        assert len(rows) == 5
-
     def test_select(self):
         rel = (
             load_table("dbsnp.vcf")

@@ -1,3 +1,9 @@
+# bedrockbio 1.3.1
+
+* Internal: hardened SQL string handling for catalog-derived paths and
+  credentials.
+* Internal: updated upstream manifest endpoint URL.
+
 # bedrockbio 1.3.0
 
 * Initial CRAN submission.

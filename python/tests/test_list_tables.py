@@ -7,3 +7,4 @@ class TestListTables:
         assert isinstance(result, list)
         for name in result:
             assert isinstance(name, str)
+        assert "dbsnp.vcf" in result

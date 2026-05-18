@@ -16,7 +16,7 @@ get_catalog <- function() {
     jsonlite::fromJSON(fetch_json(pkg$catalog_url), simplifyDataFrame = FALSE),
     error = function(e) {
       stop(
-        "Unable to access catalog URL '", pkg$catalog_url, "'. ",
+        "Unable to access manifest URL '", pkg$catalog_url, "'. ",
         "Check internet connection and try again.",
         call. = FALSE
       )
@@ -64,26 +64,16 @@ get_credentials <- function() {
     return(pkg$credentials)
   }
 
-  override_credentials <- list(
-    BB_R2_ACCOUNT_ID = Sys.getenv("BB_R2_ACCOUNT_ID"),
-    BB_R2_ACCESS_KEY_ID = Sys.getenv("BB_R2_ACCESS_KEY_ID"),
-    BB_R2_SECRET_ACCESS_KEY = Sys.getenv("BB_R2_SECRET_ACCESS_KEY")
+  pkg$credentials <- tryCatch(
+    jsonlite::fromJSON(fetch_json(pkg$credentials_url)),
+    error = function(e) {
+      stop(
+        "Unable to fetch credentials from '", pkg$credentials_url, "'. ",
+        "Check internet connection and try again.",
+        call. = FALSE
+      )
+    }
   )
-
-  pkg$credentials <- if (all(nzchar(override_credentials))) {
-    override_credentials
-  } else {
-    tryCatch(
-      jsonlite::fromJSON(fetch_json(pkg$credentials_url)),
-      error = function(e) {
-        stop(
-          "Unable to fetch credentials from '", pkg$credentials_url, "'. ",
-          "Check internet connection and try again.",
-          call. = FALSE
-        )
-      }
-    )
-  }
   pkg$credentials
 }
 
@@ -98,18 +88,15 @@ get_connection <- function() {
   DBI::dbExecute(pkg$conn, "INSTALL httpfs")
   DBI::dbExecute(pkg$conn, "INSTALL iceberg")
 
-  DBI::dbExecute(pkg$conn, sprintf(
-    "CREATE SECRET (
-      TYPE s3,
-      KEY_ID '%s',
-      SECRET '%s',
-      ENDPOINT '%s.r2.cloudflarestorage.com',
-      URL_STYLE 'path'
-    )",
-    credentials$BB_R2_ACCESS_KEY_ID,
-    credentials$BB_R2_SECRET_ACCESS_KEY,
-    credentials$BB_R2_ACCOUNT_ID
-  ))
+  DBI::dbExecute(
+    pkg$conn,
+    "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
+    params = list(
+      credentials$BB_R2_ACCESS_KEY_ID,
+      credentials$BB_R2_SECRET_ACCESS_KEY,
+      paste0(credentials$BB_R2_ACCOUNT_ID, ".r2.cloudflarestorage.com")
+    )
+  )
 
   pkg$conn
 }

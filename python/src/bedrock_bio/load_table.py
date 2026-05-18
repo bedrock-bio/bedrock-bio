@@ -49,4 +49,5 @@ def load_table(name: str) -> duckdb.DuckDBPyRelation:
 
     entry = catalog[name]
     conn = config.get_connection()
-    return conn.sql(f"SELECT * FROM iceberg_scan('{entry['metadata_json']}')")
+    escaped = entry["metadata_json"].replace("'", "''")
+    return conn.sql(f"SELECT * FROM iceberg_scan('{escaped}')")

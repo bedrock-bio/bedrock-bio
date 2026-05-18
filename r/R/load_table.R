@@ -31,6 +31,10 @@ load_table <- function(name) {
 
   entry <- catalog[[name]]
   conn <- get_connection()
-  query <- sprintf("SELECT * FROM iceberg_scan('%s')", entry$metadata_json)
+  query <- DBI::sqlInterpolate(
+    conn,
+    "SELECT * FROM iceberg_scan(?path)",
+    path = entry$metadata_json
+  )
   dplyr::tbl(conn, dplyr::sql(query))
 }
