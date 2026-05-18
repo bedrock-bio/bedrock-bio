@@ -4,16 +4,15 @@
 \alias{load_table}
 \title{Lazily query a table}
 \usage{
-load_table(name, ...)
+load_table(name)
 }
 \arguments{
 \item{name}{Table identifier (e.g., "ukb_ppp.pqtls")}
-
-\item{...}{Required partition filters
-(e.g., ancestry = "EUR", protein_id = "A0FGR8")}
 }
 \value{
 A lazy \code{tbl} backed by DuckDB, compatible with dplyr verbs.
+Use \code{describe_table()} to see partition columns and per-column allowed
+values; filter on partition columns for fastest reads.
 }
 \description{
 Lazily query a table
@@ -23,11 +22,8 @@ Lazily query a table
 library(bedrockbio)
 library(dplyr)
 
-df <- load_table(
-  "dbsnp.vcf",
-  assembly = "GRCh38",
-  chromosome = "22"
-) |>
+df <- load_table("dbsnp.vcf") |>
+  filter(assembly == "GRCh38", chromosome == "22") |>
   select(rsid, position, ref_allele, alt_allele) |>
   head(5) |>
   collect()

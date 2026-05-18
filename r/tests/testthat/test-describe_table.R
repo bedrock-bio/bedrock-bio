@@ -1,4 +1,5 @@
 skip_on_cran()
+skip_if_offline()
 
 test_that("errors on unknown table", {
   expect_error(
@@ -26,4 +27,16 @@ test_that("columns have expected fields", {
     expect_true("type" %in% names(col))
     expect_true("description" %in% names(col))
   }
+})
+
+test_that("unpartitioned table returns empty partition_by", {
+  result <- describe_table("open_targets.targets")
+  expect_equal(result$partition_by, character(0))
+  expect_true(length(result$sort_by) > 0)
+})
+
+test_that("partitioned table returns expected partition and sort columns", {
+  result <- describe_table("dbsnp.vcf")
+  expect_equal(result$partition_by, c("assembly", "chromosome"))
+  expect_equal(result$sort_by, "position")
 })

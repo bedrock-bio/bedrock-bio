@@ -16,7 +16,7 @@ get_catalog <- function() {
     jsonlite::fromJSON(fetch_json(pkg$catalog_url), simplifyDataFrame = FALSE),
     error = function(e) {
       stop(
-        "Unable to access catalog URL '", pkg$catalog_url, "'. ",
+        "Unable to access manifest URL '", pkg$catalog_url, "'. ",
         "Check internet connection and try again.",
         call. = FALSE
       )
@@ -30,19 +30,8 @@ get_catalog <- function() {
       meta <- tables[[table_name]]
       partition_by <- meta$partition_by
       if (is.null(partition_by)) partition_by <- character(0)
-      required_filters <- partition_by[partition_by != "partition"]
-
-      allowed_values <- list()
-      if (length(required_filters) > 0 && length(meta$columns) > 0) {
-        col_names <- vapply(meta$columns, function(c) c$name, character(1))
-        for (f in required_filters) {
-          idx <- match(f, col_names)
-          if (!is.na(idx) && !is.null(meta$columns[[idx]]$allowed_values)) {
-            av <- meta$columns[[idx]]$allowed_values
-            allowed_values[[f]] <- as.character(av)
-          }
-        }
-      }
+      sort_by <- meta$sort_by
+      if (is.null(sort_by)) sort_by <- character(0)
 
       keep <- c(
         "name", "type", "description",
@@ -55,8 +44,8 @@ get_catalog <- function() {
       ns_data <- raw$namespaces[[ns]]
       entries[[paste0(ns, ".", table_name)]] <- list(
         metadata_json = meta$metadata_json,
-        required_filters = required_filters,
-        allowed_values = allowed_values,
+        partition_by = as.character(partition_by),
+        sort_by = as.character(sort_by),
         description = meta$description,
         citation = ns_data$citation,
         source_url = ns_data$source_url,
@@ -75,26 +64,16 @@ get_credentials <- function() {
     return(pkg$credentials)
   }
 
-  override_credentials <- list(
-    BB_R2_ACCOUNT_ID = Sys.getenv("BB_R2_ACCOUNT_ID"),
-    BB_R2_ACCESS_KEY_ID = Sys.getenv("BB_R2_ACCESS_KEY_ID"),
-    BB_R2_SECRET_ACCESS_KEY = Sys.getenv("BB_R2_SECRET_ACCESS_KEY")
+  pkg$credentials <- tryCatch(
+    jsonlite::fromJSON(fetch_json(pkg$credentials_url)),
+    error = function(e) {
+      stop(
+        "Unable to fetch credentials from '", pkg$credentials_url, "'. ",
+        "Check internet connection and try again.",
+        call. = FALSE
+      )
+    }
   )
-
-  pkg$credentials <- if (all(nzchar(override_credentials))) {
-    override_credentials
-  } else {
-    tryCatch(
-      jsonlite::fromJSON(fetch_json(pkg$credentials_url)),
-      error = function(e) {
-        stop(
-          "Unable to fetch credentials from '", pkg$credentials_url, "'. ",
-          "Check internet connection and try again.",
-          call. = FALSE
-        )
-      }
-    )
-  }
   pkg$credentials
 }
 
@@ -109,18 +88,15 @@ get_connection <- function() {
   DBI::dbExecute(pkg$conn, "INSTALL httpfs")
   DBI::dbExecute(pkg$conn, "INSTALL iceberg")
 
-  DBI::dbExecute(pkg$conn, sprintf(
-    "CREATE SECRET (
-      TYPE s3,
-      KEY_ID '%s',
-      SECRET '%s',
-      ENDPOINT '%s.r2.cloudflarestorage.com',
-      URL_STYLE 'path'
-    )",
-    credentials$BB_R2_ACCESS_KEY_ID,
-    credentials$BB_R2_SECRET_ACCESS_KEY,
-    credentials$BB_R2_ACCOUNT_ID
-  ))
+  DBI::dbExecute(
+    pkg$conn,
+    "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
+    params = list(
+      credentials$BB_R2_ACCESS_KEY_ID,
+      credentials$BB_R2_SECRET_ACCESS_KEY,
+      paste0(credentials$BB_R2_ACCOUNT_ID, ".r2.cloudflarestorage.com")
+    )
+  )
 
   pkg$conn
 }

@@ -1,10 +1,9 @@
 import duckdb
 import json
-import os
 import urllib.request
 from dataclasses import dataclass
 
-CATALOG_URL = "https://data.bedrock.bio/catalog.json"
+CATALOG_URL = "https://data.bedrock.bio/manifest.json"
 CREDENTIALS_URL = "https://data.bedrock.bio/credentials.json"
 
 
@@ -26,24 +25,13 @@ class Config:
                 raw = json.loads(response.read())
         except Exception:
             raise ConnectionError(
-                f"Unable to access catalog URL '{CATALOG_URL}'. "
+                f"Unable to access manifest URL '{CATALOG_URL}'. "
                 "Check internet connection and try again."
             )
 
         self.catalog = {}
         for ns, ns_data in raw["namespaces"].items():
             for table, meta in ns_data["tables"].items():
-                partition_by = meta.get("partition_by", [])
-                required_filters = [p for p in partition_by if p != "partition"]
-
-                allowed_values = {}
-                if required_filters:
-                    columns_by_name = {c["name"]: c for c in meta.get("columns", [])}
-                    for f in required_filters:
-                        col = columns_by_name.get(f)
-                        if col and "allowed_values" in col:
-                            allowed_values[f] = col["allowed_values"]
-
                 columns = [
                     {
                         k: col[k]
@@ -61,8 +49,8 @@ class Config:
 
                 self.catalog[f"{ns}.{table}"] = {
                     "metadata_json": meta["metadata_json"],
-                    "required_filters": required_filters,
-                    "allowed_values": allowed_values,
+                    "partition_by": list(meta.get("partition_by", [])),
+                    "sort_by": list(meta.get("sort_by", [])),
                     "description": meta.get("description", ""),
                     "citation": ns_data.get("citation"),
                     "source_url": ns_data.get("source_url", ""),
@@ -75,26 +63,17 @@ class Config:
         if self.credentials is not None:
             return self.credentials
 
-        override_credentials = {
-            "BB_R2_ACCOUNT_ID": os.environ.get("BB_R2_ACCOUNT_ID", ""),
-            "BB_R2_ACCESS_KEY_ID": os.environ.get("BB_R2_ACCESS_KEY_ID", ""),
-            "BB_R2_SECRET_ACCESS_KEY": os.environ.get("BB_R2_SECRET_ACCESS_KEY", ""),
-        }
-
-        if all(override_credentials.values()):
-            self.credentials = override_credentials
-        else:
-            try:
-                request = urllib.request.Request(
-                    CREDENTIALS_URL, headers={"User-Agent": "bedrock-bio"}
-                )
-                with urllib.request.urlopen(request) as response:
-                    self.credentials = json.loads(response.read())
-            except Exception:
-                raise ConnectionError(
-                    f"Unable to fetch credentials from '{CREDENTIALS_URL}'. "
-                    "Check internet connection and try again."
-                )
+        try:
+            request = urllib.request.Request(
+                CREDENTIALS_URL, headers={"User-Agent": "bedrock-bio"}
+            )
+            with urllib.request.urlopen(request) as response:
+                self.credentials = json.loads(response.read())
+        except Exception:
+            raise ConnectionError(
+                f"Unable to fetch credentials from '{CREDENTIALS_URL}'. "
+                "Check internet connection and try again."
+            )
         return self.credentials
 
     def get_connection(self) -> duckdb.DuckDBPyConnection:
@@ -105,15 +84,14 @@ class Config:
         self.conn = duckdb.connect()
         self.conn.sql("INSTALL httpfs")
         self.conn.sql("INSTALL iceberg")
-        self.conn.sql(f"""
-            CREATE SECRET (
-                TYPE s3,
-                KEY_ID '{credentials["BB_R2_ACCESS_KEY_ID"]}',
-                SECRET '{credentials["BB_R2_SECRET_ACCESS_KEY"]}',
-                ENDPOINT '{credentials["BB_R2_ACCOUNT_ID"]}.r2.cloudflarestorage.com',
-                URL_STYLE 'path'
-            )
-        """)
+        self.conn.execute(
+            "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
+            [
+                credentials["BB_R2_ACCESS_KEY_ID"],
+                credentials["BB_R2_SECRET_ACCESS_KEY"],
+                f"{credentials['BB_R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+            ],
+        )
         return self.conn
 
     def reset(self):

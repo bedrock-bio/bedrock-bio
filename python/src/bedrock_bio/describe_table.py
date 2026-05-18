@@ -46,5 +46,7 @@ def describe_table(name: str) -> dict:
         "citation": entry["citation"],
         "source_url": entry["source_url"],
         "license": entry["license"],
+        "partition_by": entry["partition_by"],
+        "sort_by": entry["sort_by"],
         "columns": entry["columns"],
     }
