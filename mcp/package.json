@@ -5,7 +5,6 @@
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-		"format": "oxfmt --write .",
 		"lint": "oxlint",
 		"lint:fix": "oxlint --fix",
 		"start": "wrangler dev",
@@ -20,7 +19,6 @@
 	},
 	"devDependencies": {
 		"@types/node": "^25.5.0",
-		"oxfmt": "^0.34.0",
 		"oxlint": "^1.49.0",
 		"typescript": "5.9.3",
 		"vitest": "^3.2.4",
