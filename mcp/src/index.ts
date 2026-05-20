@@ -2,6 +2,7 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { type Catalog, validateReadOnly, findMissingPartitionFilters, formatResultWarning } from "./catalog.js";
+import { version } from "../package.json";
 
 interface Env extends Cloudflare.Env {
 	ACCOUNT_ID: string;
@@ -15,7 +16,7 @@ const CATALOG_TTL_MS = 5 * 60 * 1000;
 export class BedrockBioMcpServer extends McpAgent<Env> {
 	server = new McpServer({
 		name: "Bedrock Bio",
-		version: "1.0.0",
+		version,
 		description:
 			"Bedrock Bio computational biology data catalog. " +
 			"IMPORTANT: All table and schema information is available through this server's tools. " +
@@ -242,7 +243,7 @@ export default {
 	fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		const url = new URL(request.url);
 		if (url.pathname === "/health") {
-			return new Response("ok");
+			return Response.json({ status: "ok", version });
 		}
 		return mcpHandler.fetch(request, env, ctx);
 	},

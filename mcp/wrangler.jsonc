@@ -24,5 +24,30 @@
 			"tag": "v1",
 			"new_sqlite_classes": ["BedrockBioMcpServer"]
 		}
-	]
+	],
+	"env": {
+		"dev": {
+			"name": "bedrock-bio-mcp-dev",
+			"r2_buckets": [
+				{
+					"binding": "CATALOG_BUCKET",
+					"bucket_name": "bedrock-bio-datasets"
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "MCP_OBJECT",
+						"class_name": "BedrockBioMcpServer"
+					}
+				]
+			},
+			"migrations": [
+				{
+					"tag": "v1",
+					"new_sqlite_classes": ["BedrockBioMcpServer"]
+				}
+			]
+		}
+	}
 }

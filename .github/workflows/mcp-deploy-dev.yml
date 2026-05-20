@@ -1,4 +1,4 @@
-name: mcp-deploy
+name: mcp-deploy-dev
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  deploy-dev:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,7 +29,12 @@ jobs:
       - name: install-dependencies
         run: npm ci
       - name: wrangler-deploy
-        run: npx wrangler deploy
+        run: npx wrangler deploy --env dev
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      - name: smoke-test-health
+        run: |
+          curl --retry 5 --retry-delay 3 --retry-all-errors -sSf \
+            https://mcp-dev.bedrock.bio/health \
+            | jq -e '.status == "ok"'
