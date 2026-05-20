@@ -2,6 +2,7 @@ import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { type Catalog, validateReadOnly, findMissingPartitionFilters, formatResultWarning } from "./catalog.js";
+import { logEvent } from "./log.js";
 import { version } from "../package.json";
 
 interface Env extends Cloudflare.Env {
@@ -67,30 +68,40 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				inputSchema: {},
 			},
 			async () => {
-				let catalog: Catalog;
+				const t0 = Date.now();
+				let outcome = "ok";
 				try {
-					catalog = await this.loadCatalog();
+					let catalog: Catalog;
+					try {
+						catalog = await this.loadCatalog();
+					} catch (err) {
+						outcome = "catalog_unavailable";
+						return { isError: true, content: [{ type: "text" as const, text: err instanceof Error ? err.message : String(err) }] };
+					}
+
+					const namespaces = Object.entries(catalog.namespaces).map(([ns, nsDef]) => ({
+						namespace: ns,
+						name: nsDef.name,
+						description: nsDef.description,
+						citation: nsDef.citation,
+						source_url: nsDef.source_url,
+						license: nsDef.license,
+						instructions: nsDef.instructions || "",
+						tables: Object.entries(nsDef.tables).map(([tableName, tableDef]) => ({
+							table: tableName,
+							qualified: `${ns}.${tableName}`,
+							description: tableDef.description,
+							instructions: tableDef.instructions || "",
+						})),
+					}));
+
+					return { content: [{ type: "text" as const, text: JSON.stringify(namespaces, null, 2) }] };
 				} catch (err) {
-					return { isError: true, content: [{ type: "text" as const, text: err instanceof Error ? err.message : String(err) }] };
+					outcome = "exception";
+					throw err;
+				} finally {
+					logEvent({ event_type: "tool_call", tool: "list_tables", outcome, duration_ms: Date.now() - t0 });
 				}
-
-				const namespaces = Object.entries(catalog.namespaces).map(([ns, nsDef]) => ({
-					namespace: ns,
-					name: nsDef.name,
-					description: nsDef.description,
-					citation: nsDef.citation,
-					source_url: nsDef.source_url,
-					license: nsDef.license,
-					instructions: nsDef.instructions || "",
-					tables: Object.entries(nsDef.tables).map(([tableName, tableDef]) => ({
-						table: tableName,
-						qualified: `${ns}.${tableName}`,
-						description: tableDef.description,
-						instructions: tableDef.instructions || "",
-					})),
-				}));
-
-				return { content: [{ type: "text" as const, text: JSON.stringify(namespaces, null, 2) }] };
 			}
 		);
 
@@ -118,73 +129,97 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				inputSchema: { sql: z.string().describe("Read-only SQL query (SELECT, SHOW, DESCRIBE, EXPLAIN, or WITH)") },
 			},
 			async ({ sql }) => {
-				const validationError = validateReadOnly(sql);
-				if (validationError) {
-					return { isError: true, content: [{ type: "text" as const, text: validationError }] };
-				}
-
-				let catalog: Catalog | null = null;
+				const t0 = Date.now();
+				let outcome = "ok";
+				let r2_sql_ms: number | undefined;
+				let r2_sql_status: number | undefined;
+				let rows_returned: number | undefined;
+				let rows_total: number | undefined;
 				try {
-					catalog = await this.loadCatalog();
-				} catch {}
-
-				if (catalog) {
-					const missingFilters = findMissingPartitionFilters(sql, catalog);
-					if (missingFilters.length > 0) {
-						const { ns, table, partitionCols, missing } = missingFilters[0];
-						return {
-							isError: true,
-							content: [{
-								type: "text" as const,
-								text: `Query on ${ns}.${table} is missing required partition filters: ${missing.join(", ")}. ` +
-									`Every query must include a WHERE filter for all partition_by columns: ${partitionCols.join(", ")}. ` +
-									`If you need data across multiple partitions, run separate queries for each partition value.`,
-							}],
-						};
+					const validationError = validateReadOnly(sql);
+					if (validationError) {
+						outcome = "validation_error";
+						return { isError: true, content: [{ type: "text" as const, text: validationError }] };
 					}
-				}
 
-				// Execute query
-				const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${this.env.ACCOUNT_ID}/r2-sql/query/${this.env.BUCKET_NAME}`;
-				const headers = {
-					Authorization: `Bearer ${this.env.R2_SQL_TOKEN}`,
-					"Content-Type": "application/json",
-				};
-				const body = JSON.stringify({ query: sql });
+					let catalog: Catalog | null = null;
+					try {
+						catalog = await this.loadCatalog();
+					} catch {}
 
-				let response: Response;
-				try {
-					response = await fetch(url, { method: "POST", headers, body });
-				} catch {
+					if (catalog) {
+						const missingFilters = findMissingPartitionFilters(sql, catalog);
+						if (missingFilters.length > 0) {
+							outcome = "partition_filter_error";
+							const { ns, table, partitionCols, missing } = missingFilters[0];
+							return {
+								isError: true,
+								content: [{
+									type: "text" as const,
+									text: `Query on ${ns}.${table} is missing required partition filters: ${missing.join(", ")}. ` +
+										`Every query must include a WHERE filter for all partition_by columns: ${partitionCols.join(", ")}. ` +
+										`If you need data across multiple partitions, run separate queries for each partition value.`,
+								}],
+							};
+						}
+					}
+
+					// Execute query
+					const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${this.env.ACCOUNT_ID}/r2-sql/query/${this.env.BUCKET_NAME}`;
+					const headers = {
+						Authorization: `Bearer ${this.env.R2_SQL_TOKEN}`,
+						"Content-Type": "application/json",
+					};
+					const body = JSON.stringify({ query: sql });
+
+					const tFetch = Date.now();
+					let response: Response;
 					try {
 						response = await fetch(url, { method: "POST", headers, body });
 					} catch {
-						return { isError: true, content: [{ type: "text" as const, text: "R2 SQL is unreachable. Try again shortly." }] };
+						try {
+							response = await fetch(url, { method: "POST", headers, body });
+						} catch {
+							r2_sql_ms = Date.now() - tFetch;
+							outcome = "r2_sql_unreachable";
+							return { isError: true, content: [{ type: "text" as const, text: "R2 SQL is unreachable. Try again shortly." }] };
+						}
 					}
+					r2_sql_ms = Date.now() - tFetch;
+					r2_sql_status = response.status;
+
+					if (!response.ok) {
+						outcome = "r2_sql_http_error";
+						return { isError: true, content: [{ type: "text" as const, text: `R2 SQL HTTP ${response.status}: ${await response.text()}` }] };
+					}
+
+					const data = (await response.json()) as any;
+					if (!data.success) {
+						outcome = "r2_sql_query_error";
+						const error = data.errors?.map((e: any) => e.message).join("; ") ?? "Unknown error";
+						const hint = error.includes("table not found") ? "Use the list_tables tool to discover available table names." : undefined;
+						return {
+							isError: true,
+							content: [{ type: "text" as const, text: JSON.stringify({ error, sql, ...(hint ? { hint } : {}) }, null, 2) }],
+						};
+					}
+
+					const columns = (data.result?.schema ?? []).map((s: { name: string }) => s.name);
+					const allRows: Record<string, unknown>[] = data.result?.rows ?? [];
+					rows_total = allRows.length;
+					const maxRows = 100;
+					const rows = allRows.slice(0, maxRows);
+					rows_returned = rows.length;
+					const warning = formatResultWarning(rows.length, allRows.length, sql, maxRows);
+
+					const header = `Columns: ${columns.join(", ")}\nRows: ${rows.length}${warning}`;
+					return { content: [{ type: "text" as const, text: `${header}\n\n${JSON.stringify(rows, null, 2)}` }] };
+				} catch (err) {
+					outcome = "exception";
+					throw err;
+				} finally {
+					logEvent({ event_type: "tool_call", tool: "query", outcome, duration_ms: Date.now() - t0, sql, r2_sql_ms, r2_sql_status, rows_returned, rows_total });
 				}
-
-				if (!response.ok) {
-					return { isError: true, content: [{ type: "text" as const, text: `R2 SQL HTTP ${response.status}: ${await response.text()}` }] };
-				}
-
-				const data = (await response.json()) as any;
-				if (!data.success) {
-					const error = data.errors?.map((e: any) => e.message).join("; ") ?? "Unknown error";
-					const hint = error.includes("table not found") ? "Use the list_tables tool to discover available table names." : undefined;
-					return {
-						isError: true,
-						content: [{ type: "text" as const, text: JSON.stringify({ error, sql, ...(hint ? { hint } : {}) }, null, 2) }],
-					};
-				}
-
-				const columns = (data.result?.schema ?? []).map((s: { name: string }) => s.name);
-				const allRows: Record<string, unknown>[] = data.result?.rows ?? [];
-				const maxRows = 100;
-				const rows = allRows.slice(0, maxRows);
-				const warning = formatResultWarning(rows.length, allRows.length, sql, maxRows);
-
-				const header = `Columns: ${columns.join(", ")}\nRows: ${rows.length}${warning}`;
-				return { content: [{ type: "text" as const, text: `${header}\n\n${JSON.stringify(rows, null, 2)}` }] };
 			}
 		);
 
@@ -200,38 +235,49 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				},
 			},
 			async ({ namespace }) => {
-				let catalog: Catalog;
+				const t0 = Date.now();
+				let outcome = "ok";
 				try {
-					catalog = await this.loadCatalog();
-				} catch (err) {
-					return { isError: true, content: [{ type: "text" as const, text: err instanceof Error ? err.message : String(err) }] };
-				}
+					let catalog: Catalog;
+					try {
+						catalog = await this.loadCatalog();
+					} catch (err) {
+						outcome = "catalog_unavailable";
+						return { isError: true, content: [{ type: "text" as const, text: err instanceof Error ? err.message : String(err) }] };
+					}
 
-				const nsDef = catalog.namespaces[namespace];
-				if (!nsDef) {
-					const available = Object.keys(catalog.namespaces).join(", ");
-					return { isError: true, content: [{ type: "text" as const, text: `Namespace '${namespace}' not found. Available: ${available}` }] };
-				}
+					const nsDef = catalog.namespaces[namespace];
+					if (!nsDef) {
+						outcome = "namespace_not_found";
+						const available = Object.keys(catalog.namespaces).join(", ");
+						return { isError: true, content: [{ type: "text" as const, text: `Namespace '${namespace}' not found. Available: ${available}` }] };
+					}
 
-				const tables = Object.entries(nsDef.tables).map(([tableName, tableDef]) => {
-					const table: Record<string, unknown> = {
-						table: `${namespace}.${tableName}`,
-						description: tableDef.description,
+					const tables = Object.entries(nsDef.tables).map(([tableName, tableDef]) => {
+						const table: Record<string, unknown> = {
+							table: `${namespace}.${tableName}`,
+							description: tableDef.description,
+						};
+						if (tableDef.instructions) table.instructions = tableDef.instructions;
+						table.partition_by = tableDef.partition_by;
+						table.sort_by = tableDef.sort_by;
+						table.columns = tableDef.columns;
+						if (Object.keys(tableDef.related_tables).length > 0) table.related_tables = tableDef.related_tables;
+						return table;
+					});
+
+					return {
+						content: [{
+							type: "text" as const,
+							text: JSON.stringify({ namespace, citation: nsDef.citation, tables }, null, 2),
+						}],
 					};
-					if (tableDef.instructions) table.instructions = tableDef.instructions;
-					table.partition_by = tableDef.partition_by;
-					table.sort_by = tableDef.sort_by;
-					table.columns = tableDef.columns;
-					if (Object.keys(tableDef.related_tables).length > 0) table.related_tables = tableDef.related_tables;
-					return table;
-				});
-
-				return {
-					content: [{
-						type: "text" as const,
-						text: JSON.stringify({ namespace, citation: nsDef.citation, tables }, null, 2),
-					}],
-				};
+				} catch (err) {
+					outcome = "exception";
+					throw err;
+				} finally {
+					logEvent({ event_type: "tool_call", tool: "describe_namespace", outcome, duration_ms: Date.now() - t0, namespace });
+				}
 			}
 		);
 	}
