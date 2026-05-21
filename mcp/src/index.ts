@@ -7,11 +7,11 @@ import { version } from "../package.json";
 
 interface Env extends Cloudflare.Env {
 	ACCOUNT_ID: string;
-	BUCKET_NAME: string;
+	R2_BUCKET_NAME: string;
 	R2_SQL_TOKEN: string;
-	CATALOG_BUCKET: R2Bucket;
 }
 
+const MANIFEST_URL = "https://data.bedrock.bio/manifest.json";
 const CATALOG_TTL_MS = 5 * 60 * 1000;
 
 export class BedrockBioMcpServer extends McpAgent<Env> {
@@ -39,20 +39,20 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 			return this.catalog;
 		}
 
-		let obj: R2ObjectBody | null;
+		let response: Response;
 		try {
-			obj = await this.env.CATALOG_BUCKET.get("manifest.json");
+			response = await fetch(MANIFEST_URL);
 		} catch (err) {
 			if (this.catalog) return this.catalog;
 			throw err;
 		}
 
-		if (!obj) {
+		if (!response.ok) {
 			if (this.catalog) return this.catalog;
 			throw new Error("Data catalog not available. Contact the administrator.");
 		}
 
-		this.catalog = await obj.json<Catalog>();
+		this.catalog = await response.json<Catalog>();
 		this.catalogFetchedAt = now;
 		return this.catalog;
 	}
@@ -165,7 +165,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					}
 
 					// Execute query
-					const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${this.env.ACCOUNT_ID}/r2-sql/query/${this.env.BUCKET_NAME}`;
+					const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${this.env.ACCOUNT_ID}/r2-sql/query/${this.env.R2_BUCKET_NAME}`;
 					const headers = {
 						Authorization: `Bearer ${this.env.R2_SQL_TOKEN}`,
 						"Content-Type": "application/json",

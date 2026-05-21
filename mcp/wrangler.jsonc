@@ -6,12 +6,6 @@
 	"workers_dev": false,
 	"preview_urls": false,
 	"observability": { "enabled": true },
-	"r2_buckets": [
-		{
-			"binding": "CATALOG_BUCKET",
-			"bucket_name": "bedrock-bio-datasets"
-		}
-	],
 	"durable_objects": {
 		"bindings": [
 			{
@@ -30,12 +24,6 @@
 		"dev": {
 			"name": "bedrock-bio-mcp-dev",
 			"observability": { "enabled": true },
-			"r2_buckets": [
-				{
-					"binding": "CATALOG_BUCKET",
-					"bucket_name": "bedrock-bio-datasets"
-				}
-			],
 			"durable_objects": {
 				"bindings": [
 					{
