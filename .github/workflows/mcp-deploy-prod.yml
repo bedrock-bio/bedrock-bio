@@ -25,10 +25,11 @@ jobs:
       - name: install-dependencies
         run: npm ci
       - name: wrangler-deploy
-        run: npx wrangler deploy
+        run: npx wrangler deploy --var ACCOUNT_ID:"$CLOUDFLARE_ACCOUNT_ID" --var BUCKET_NAME:"$CLOUDFLARE_R2_BUCKET"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
       - name: smoke-test-health
         run: |
           curl --retry 5 --retry-delay 3 --retry-all-errors -sSf \
