@@ -92,9 +92,9 @@ get_connection <- function() {
     pkg$conn,
     "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
     params = list(
-      credentials$BB_R2_ACCESS_KEY_ID,
-      credentials$BB_R2_SECRET_ACCESS_KEY,
-      paste0(credentials$BB_R2_ACCOUNT_ID, ".r2.cloudflarestorage.com")
+      credentials$R2_ACCESS_KEY_ID,
+      credentials$R2_SECRET_ACCESS_KEY,
+      paste0(credentials$R2_ACCOUNT_ID, ".r2.cloudflarestorage.com")
     )
   )
 

@@ -126,9 +126,9 @@ test_that("get_credentials returns expected keys", {
   reset_pkg()
   result <- bedrockbio:::get_credentials()
   expected_names <- c(
-    "BB_R2_ACCOUNT_ID",
-    "BB_R2_ACCESS_KEY_ID",
-    "BB_R2_SECRET_ACCESS_KEY"
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY"
   )
   expect_true(all(expected_names %in% names(result)))
   for (nm in expected_names) {
