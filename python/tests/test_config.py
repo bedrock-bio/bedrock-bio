@@ -93,9 +93,9 @@ class TestConfig:
     def test_credentials_returns_expected_keys(self):
         result = config.get_credentials()
         expected_keys = {
-            "BB_R2_ACCOUNT_ID",
-            "BB_R2_ACCESS_KEY_ID",
-            "BB_R2_SECRET_ACCESS_KEY",
+            "R2_ACCOUNT_ID",
+            "R2_ACCESS_KEY_ID",
+            "R2_SECRET_ACCESS_KEY",
         }
         assert set(result.keys()) == expected_keys
         for value in result.values():

@@ -87,9 +87,9 @@ class Config:
         self.conn.execute(
             "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
             [
-                credentials["BB_R2_ACCESS_KEY_ID"],
-                credentials["BB_R2_SECRET_ACCESS_KEY"],
-                f"{credentials['BB_R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+                credentials["R2_ACCESS_KEY_ID"],
+                credentials["R2_SECRET_ACCESS_KEY"],
+                f"{credentials['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
             ],
         )
         return self.conn
