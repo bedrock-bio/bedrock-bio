@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateReadOnly, findMissingPartitionFilters, formatResultWarning, type Catalog } from "./catalog.js";
+import { validateReadOnly, findMissingPartitionFilters, extractTableRefs, formatResultWarning, type Catalog } from "./catalog.js";
 
 describe("validateReadOnly", () => {
 	it("accepts allowed verbs", () => {
@@ -218,6 +218,28 @@ describe("findMissingPartitionFilters", () => {
 		expect(findMissingPartitionFilters(sql, catalog)).toEqual([]);
 	});
 
+	it("reports missing partition cols on JOINed tables", () => {
+		const catalog: Catalog = {
+			version: 1,
+			namespaces: {
+				ukb_ppp: {
+					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					tables: {
+						assays: {
+							description: "", partition_by: [], sort_by: [], related_tables: {}, columns: [],
+						},
+						pqtls: {
+							description: "", partition_by: ["ancestry", "protein_id"], sort_by: [], related_tables: {}, columns: [],
+						},
+					},
+				},
+			},
+		};
+		const sql = "SELECT a.gene_symbol, p.pvalue FROM ukb_ppp.assays a JOIN ukb_ppp.pqtls p ON a.protein_id = p.protein_id LIMIT 10";
+		const result = findMissingPartitionFilters(sql, catalog);
+		expect(result).toEqual([{ ns: "ukb_ppp", table: "pqtls", partitionCols: ["ancestry", "protein_id"], missing: ["ancestry", "protein_id"] }]);
+	});
+
 	// Known limitation: aliasing like FROM ns.t AS p WHERE p.ancestry = 'EUR' still satisfies the
 	// substring check because the column name appears in the WHERE clause. This is the desired
 	// behavior; pinned to catch regressions if the matcher gets stricter.
@@ -237,6 +259,65 @@ describe("findMissingPartitionFilters", () => {
 		};
 		const sql = "SELECT p.* FROM ukb_ppp.pqtls AS p WHERE p.ancestry = 'EUR' LIMIT 1";
 		expect(findMissingPartitionFilters(sql, catalog)).toEqual([]);
+	});
+});
+
+describe("extractTableRefs", () => {
+	it("returns empty for queries with no qualified table refs", () => {
+		expect(extractTableRefs("SELECT 1")).toEqual([]);
+		expect(extractTableRefs("SELECT * FROM unqualified LIMIT 1")).toEqual([]);
+	});
+
+	it("extracts a single FROM ref", () => {
+		expect(extractTableRefs("SELECT * FROM ukb_ppp.pqtls LIMIT 1")).toEqual([{ ns: "ukb_ppp", table: "pqtls" }]);
+	});
+
+	it("extracts FROM and JOIN refs together", () => {
+		const sql = "SELECT * FROM ukb_ppp.assays a JOIN ukb_ppp.pqtls p ON a.protein_id = p.protein_id LIMIT 1";
+		expect(extractTableRefs(sql)).toEqual([
+			{ ns: "ukb_ppp", table: "assays" },
+			{ ns: "ukb_ppp", table: "pqtls" },
+		]);
+	});
+
+	it("matches all JOIN variants (INNER, LEFT, RIGHT, FULL OUTER, CROSS)", () => {
+		const sql = `SELECT * FROM a.t1
+			INNER JOIN b.t2 ON 1=1
+			LEFT JOIN c.t3 ON 1=1
+			RIGHT OUTER JOIN d.t4 ON 1=1
+			FULL OUTER JOIN e.t5 ON 1=1
+			CROSS JOIN f.t6
+			LIMIT 1`;
+		expect(extractTableRefs(sql)).toEqual([
+			{ ns: "a", table: "t1" },
+			{ ns: "b", table: "t2" },
+			{ ns: "c", table: "t3" },
+			{ ns: "d", table: "t4" },
+			{ ns: "e", table: "t5" },
+			{ ns: "f", table: "t6" },
+		]);
+	});
+
+	it("deduplicates self-joins", () => {
+		const sql = "SELECT * FROM ukb_ppp.pqtls a JOIN ukb_ppp.pqtls b ON a.protein_id = b.protein_id LIMIT 1";
+		expect(extractTableRefs(sql)).toEqual([{ ns: "ukb_ppp", table: "pqtls" }]);
+	});
+
+	it("ignores ns.table references inside string literals", () => {
+		const sql = "SELECT * FROM dbsnp.variants WHERE source = 'from ukb_ppp.pqtls' LIMIT 1";
+		expect(extractTableRefs(sql)).toEqual([{ ns: "dbsnp", table: "variants" }]);
+	});
+
+	it("lowercases ns and table", () => {
+		expect(extractTableRefs("SELECT * FROM UKB_PPP.PQTLS LIMIT 1")).toEqual([{ ns: "ukb_ppp", table: "pqtls" }]);
+	});
+
+	it("extracts refs from CTEs and subqueries", () => {
+		const sql = "WITH x AS (SELECT * FROM ns1.t1) SELECT * FROM x JOIN (SELECT * FROM ns2.t2) y ON 1=1 LIMIT 1";
+		expect(extractTableRefs(sql)).toEqual([
+			{ ns: "ns1", table: "t1" },
+			{ ns: "ns2", table: "t2" },
+		]);
 	});
 });
 
