@@ -100,7 +100,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					outcome = "exception";
 					throw err;
 				} finally {
-					logEvent({ event_type: "tool_call", tool: "list_tables", outcome, duration_ms: Date.now() - t0 });
+					logEvent(this.env, { event_type: "tool_call", tool: "list_tables", outcome, duration_ms: Date.now() - t0 });
 				}
 			}
 		);
@@ -218,7 +218,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					outcome = "exception";
 					throw err;
 				} finally {
-					logEvent({ event_type: "tool_call", tool: "query", outcome, duration_ms: Date.now() - t0, sql, r2_sql_ms, r2_sql_status, rows_returned, rows_total });
+					logEvent(this.env, { event_type: "tool_call", tool: "query", outcome, duration_ms: Date.now() - t0, sql, r2_sql_ms, r2_sql_status, rows_returned, rows_total });
 				}
 			}
 		);
@@ -276,7 +276,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					outcome = "exception";
 					throw err;
 				} finally {
-					logEvent({ event_type: "tool_call", tool: "describe_namespace", outcome, duration_ms: Date.now() - t0, namespace });
+					logEvent(this.env, { event_type: "tool_call", tool: "describe_namespace", outcome, duration_ms: Date.now() - t0, namespace });
 				}
 			}
 		);
