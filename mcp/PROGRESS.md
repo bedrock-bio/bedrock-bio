@@ -37,6 +37,8 @@ Punch list and roadmap for the Bedrock Bio MCP server. This file is the source o
   - **Web Analytics** (privacy-respecting RUM) auto-installed on `bedrock.bio`.
   - **Cache ruleset** on `data.bedrock.bio` + `data-dev.bedrock.bio` with 1-year edge TTL.
   - Decided against rate-limiting `data.bedrock.bio` (R2 egress is free; static JSON is edge-cached; bulk download is already possible via the published `credentials.json` S3 keys, so HTTP rate limit would be theater).
+- **2026-05-22** — Phase 2 Step 1 (PR #26): `analytics_engine_datasets` binding `MCP_EVENTS` → `bedrock_bio_mcp_events` (prod) / `bedrock_bio_mcp_events_dev` (dev). Nothing writes yet. Also: DO binding renamed `MCP_OBJECT` → `MCP_SERVER` (label only); README staleness pass.
+- **2026-05-22** — Phase 2 Step 2 (PR #27): `extractTableRefs` extracted from `catalog.ts`, now walks `JOIN` as well as `FROM`. Closes a latent bug where JOIN'd partitioned tables bypassed partition-filter validation. `findMissingPartitionFilters` is now a thin wrapper.
 
 ## Pending release
 
@@ -45,10 +47,11 @@ Merged to `main` and live on dev (`mcp-dev.bedrock.bio`), but won't reach prod u
 - Dev/prod environment split
 - Phase 1 observability
 - Workflow-injected `ACCOUNT_ID` / `R2_BUCKET_NAME` + single-bucket consolidation
+- Phase 2 Steps 1–2 (AE binding + `extractTableRefs` refactor)
 
 ## In progress
 
-(none — Phase 1 complete on dev)
+Phase 2 (Analytics Engine) — Steps 3–6 (see Queued).
 
 ## Queued
 
@@ -69,8 +72,8 @@ AE event shape (tentative — finalize during Step 3):
 - For `query` events touching multiple tables: emit one base event + one child row per referenced table (same `sql_hash` as foreign key, `namespace`/`table` populated only on children) to make `GROUP BY namespace, table` trivial.
 
 Step-by-step:
-1. Add `analytics_engine_datasets` binding to `wrangler.jsonc` (top-level → `bedrock_bio_mcp_events`, `env.dev` → `bedrock_bio_mcp_events_dev`).
-2. Refactor `catalog.ts`: lift the `FROM ns.table` extraction out of `findMissingPartitionFilters` into an exported `extractTableRefs(sql)`. Expand to also walk `JOIN` clauses (current regex is `FROM`-only — confirm/fix the partition-filter gap on JOINed tables as a side-benefit). `findMissingPartitionFilters` becomes a thin wrapper.
+1. ✅ Add `analytics_engine_datasets` binding to `wrangler.jsonc`.
+2. ✅ Refactor `catalog.ts` to expose `extractTableRefs(sql)`; expand to walk `JOIN` as well as `FROM`.
 3. Extend `logEvent()` to accept the AE binding and dual-write. `console.log` path unchanged in both envs.
 4. Per-table fan-out for `query` events.
 5. Add `mcp/scripts/ae-query.sh` (or `.ts`) wrapping `POST .../analytics_engine/sql` with a new narrow-scoped token (Account Analytics:Read — not reusing `mcp-r2-sql-ro-prod`). Bundle ~5 canned queries: daily volume by tool, top namespaces/tables, outcome breakdown, p50/p95/p99 of `duration_ms` + `r2_sql_ms`, top `sql_hash`es.
