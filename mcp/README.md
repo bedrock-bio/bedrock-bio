@@ -33,22 +33,23 @@ npm run dev         # local Worker (wrangler dev)
 npm test            # vitest
 npm run type-check  # tsc --noEmit
 npm run lint:fix    # oxlint
-npm run format      # oxfmt
 npm run deploy      # wrangler deploy
 ```
 
 ## Configuration
 
-Set via `wrangler secret put` (sensitive) or `vars` in `wrangler.jsonc`:
+Required at runtime:
 
-- `ACCOUNT_ID` — Cloudflare account ID for the R2 SQL endpoint
-- `BUCKET_NAME` — R2 bucket the Iceberg tables live under
-- `R2_SQL_TOKEN` — API token with R2 SQL + Data Catalog + R2 read scopes
+- `R2_SQL_TOKEN` — API token with the Workers R2 SQL: Read scope. Set as a Worker secret (`wrangler secret put R2_SQL_TOKEN`).
+- `ACCOUNT_ID` — Cloudflare account ID for the R2 SQL endpoint. Injected as a Worker var at deploy time (`wrangler deploy --var ACCOUNT_ID:...`); CI sources it from a repo variable.
+- `R2_BUCKET_NAME` — R2 bucket the Iceberg tables live in. Injected as a Worker var at deploy time the same way.
+
+The catalog manifest is fetched at runtime from `https://data.bedrock.bio/manifest.json` — no R2 binding required.
 
 Bindings (in `wrangler.jsonc`):
 
-- `CATALOG_BUCKET` (R2) — holds `manifest.json`, produced by the bedrock-bio-dagster pipeline
-- `MCP_OBJECT` (Durable Object) — per-session MCP agent state
+- `MCP_SERVER` (Durable Object) — per-session MCP agent state
+- `MCP_EVENTS` (Analytics Engine) — structured event stream for queryable usage metrics (prod: `bedrock_bio_mcp_events`; dev: `bedrock_bio_mcp_events_dev`)
 
 ## Notes
 

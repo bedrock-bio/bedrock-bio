@@ -29,7 +29,7 @@ Punch list and roadmap for the Bedrock Bio MCP server. This file is the source o
   - **Rate limiting** (the Queued item): one zone-wide rule on `mcp.bedrock.bio/mcp*` + `mcp-dev.bedrock.bio/mcp*`, 50 req per 10s per IP per colo, 10s cool-off. Free plan locks `period`, `mitigation_timeout`, and includes `cf.colo.id` as a required characteristic — effective protection is throttling, not blocking. Pro plan unlocks proper block durations.
   - **Bot blocking**: zone-wide custom UA list (~60 entries: AI training crawlers, SEO scrapers, content scrapers, social card preview crawlers except LinkedInBot, Internet Archive). Stacks with Cloudflare's managed AI Scrapers list (`ai_bots_protection = "block"`) and AI Labyrinth (`crawler_protection = "enabled"`). Search engines (Googlebot, Bingbot, DuckDuckBot) intentionally allowed.
   - **Managed robots.txt** with Content Signals: `search=yes, ai-train=no` (dashboard-only, no Terraform resource exists).
-  - **Bot Fight Mode** (`fight_mode = true`) + JS detections (`enable_js = true`) for baseline automated-traffic detection.
+  - **Bot Fight Mode disabled** (`fight_mode = false`, `enable_js = false`). Briefly enabled the same day, then rolled back after BFM Managed-Challenged libcurl/R clients on Azure GitHub Actions IPs, breaking `r-check` CI on `data.bedrock.bio` (Python urllib unaffected — different TLS/JA3 fingerprint). Free-tier BFM is not skippable via Custom Rules; the `phases = ["http_request_sbfm"]` Skip action only bypasses Pro+ SBFM, and silently no-ops on Free (confirmed against Security Events). On Free, BFM is zone-wide on/off; the actual bot threat is already covered by `ai_bots_protection`, `crawler_protection`, the custom UA blocklist, and the `/mcp` rate limit. Revisit when on Pro (SBFM is per-hostname-skippable).
   - **SSL/TLS**: Full Strict, Always Use HTTPS, Automatic HTTPS Rewrites, Min TLS 1.2, HSTS (1yr, no `includeSubDomains`) via `add_security_headers` managed transform.
   - **DNSSEC** active; **Zone Hold** against accidental zone takeover.
   - **Tiered Cache** (Smart) on; reduces R2 origin pulls for `data.bedrock.bio`.
@@ -55,9 +55,30 @@ Merged to `main` and live on dev (`mcp-dev.bedrock.bio`), but won't reach prod u
 ### Phase 2: Analytics Engine
 Builds on Phase 1's `logEvent()`. Adds an AE binding and extends the helper to dual-write (`console.log` + `writeDataPoint`). Refactor SQL parser to expose `extractTableRefs()` so aggregation by namespace/table is queryable. Enables SQL-queryable metrics for query volume, hot namespaces/tables, error rates, R2 SQL p95 latency.
 
-Open schema decisions deferred to phase 2:
-- Single shared AE dataset with an `environment` blob (preferred) vs. separate `mcp_events_dev` / `mcp_events_prod` datasets
-- Log the SQL `text` or only a `sql_hash` for grouping
+Workers Logs (Phase 1) stays as-is for per-event ops debugging (~24h–7d retention, dashboard/`wrangler tail` only). AE is the analytics layer (90d retention, SQL via HTTPS API). Same `logEvent()` helper fans out to both.
+
+Resolved schema decisions:
+- **Datasets**: two, same binding name `MCP_EVENTS`, different dataset per env — `bedrock_bio_mcp_events` (prod, the analytics source of truth) and `bedrock_bio_mcp_events_dev` (dev, write-only, exists to validate the AE write path on every deploy; never queried for analytics). Rationale: AE is product analytics, not ops correlation, so cross-env queries aren't useful; dataset-name-as-env-filter avoids "forgot the WHERE environment=…" footguns; account-namespaced prefix matches the rest of the infra and avoids future collisions. `writeDataPoint` is fire-and-forget with no ack, so dev writes are the only way to verify wiring end-to-end before promoting.
+- **SQL logging**: log both full `sql` text (blob, for drill-down) and `sql_hash` (FNV-1a, 16 hex, blob, for `GROUP BY` on recurring query patterns). AE's 90d retention exceeds Workers Logs', so AE becomes the long-tail record of query text.
+- **No `environment` blob** — dataset name carries the distinction. Frees a blob slot.
+
+AE event shape (tentative — finalize during Step 3):
+- `blobs`: `event_type`, `tool`, `outcome`, `version`, `sql_hash`, `sql`, `namespace`, `table`
+- `doubles`: `duration_ms`, `r2_sql_ms`, `r2_sql_status`, `rows_returned`, `rows_total`
+- `indexes`: `tool` (sampling key — low-cardinality, 3 values today)
+- For `query` events touching multiple tables: emit one base event + one child row per referenced table (same `sql_hash` as foreign key, `namespace`/`table` populated only on children) to make `GROUP BY namespace, table` trivial.
+
+Step-by-step:
+1. Add `analytics_engine_datasets` binding to `wrangler.jsonc` (top-level → `bedrock_bio_mcp_events`, `env.dev` → `bedrock_bio_mcp_events_dev`).
+2. Refactor `catalog.ts`: lift the `FROM ns.table` extraction out of `findMissingPartitionFilters` into an exported `extractTableRefs(sql)`. Expand to also walk `JOIN` clauses (current regex is `FROM`-only — confirm/fix the partition-filter gap on JOINed tables as a side-benefit). `findMissingPartitionFilters` becomes a thin wrapper.
+3. Extend `logEvent()` to accept the AE binding and dual-write. `console.log` path unchanged in both envs.
+4. Per-table fan-out for `query` events.
+5. Add `mcp/scripts/ae-query.sh` (or `.ts`) wrapping `POST .../analytics_engine/sql` with a new narrow-scoped token (Account Analytics:Read — not reusing `mcp-r2-sql-ro-prod`). Bundle ~5 canned queries: daily volume by tool, top namespaces/tables, outcome breakdown, p50/p95/p99 of `duration_ms` + `r2_sql_ms`, top `sql_hash`es.
+6. Deploy to dev, generate events via MCP Inspector, verify shape by querying `bedrock_bio_mcp_events_dev`. Then promote in the next batched release.
+
+Risks to confirm before starting:
+- AE Free-tier write/query quotas (10M writes/day, 10K queries/day account-wide) — well above current traffic but verify the account is on Workers Free, not Bundled.
+- No PII in `sql` blob today (user-authored read-only queries against public bio data). Revisit if auth + per-user identifiers ever land.
 
 ### User-facing docs + discoverability
 - Section in `bedrock-bio-www` showing how to connect Claude Desktop / Claude Code / Cursor to the MCP server
