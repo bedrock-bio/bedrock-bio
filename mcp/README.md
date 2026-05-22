@@ -40,7 +40,7 @@ npm run deploy      # wrangler deploy
 
 Required at runtime:
 
-- `R2_SQL_TOKEN` — API token with the Workers R2 SQL: Read scope. Set as a Worker secret (`wrangler secret put R2_SQL_TOKEN`).
+- `R2_SQL_TOKEN` — **R2 API token** with **Admin Read & Write** scope, created from Cloudflare dashboard → R2 object storage → Manage API tokens (the dedicated R2 token page, not the generic My Profile → API Tokens page). The "Workers R2 SQL: Read" permission on the generic page silently 401s against R2 SQL; "Admin Read only" on the R2 page also 401s despite the docs. Set as a Worker secret (`wrangler secret put R2_SQL_TOKEN`). Tokens are account-wide; rotate aggressively if exposed.
 - `ACCOUNT_ID` — Cloudflare account ID for the R2 SQL endpoint. Injected as a Worker var at deploy time (`wrangler deploy --var ACCOUNT_ID:...`); CI sources it from a repo variable.
 - `R2_BUCKET_NAME` — R2 bucket the Iceberg tables live in. Injected as a Worker var at deploy time the same way.
 
