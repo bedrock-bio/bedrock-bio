@@ -170,11 +170,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						Authorization: `Bearer ${this.env.R2_SQL_TOKEN}`,
 						"Content-Type": "application/json",
 					};
-					// `warehouse` is required by the R2 SQL API; without it the gateway
-					// returns a non-JSON "Route not found." 404. Format mirrors wrangler:
-					// <accountId>_<bucketName>.
-					const warehouse = `${this.env.ACCOUNT_ID}_${this.env.R2_BUCKET_NAME}`;
-					const body = JSON.stringify({ warehouse, query: sql });
+					const body = JSON.stringify({ query: sql });
 
 					const tFetch = Date.now();
 					let response: Response;
