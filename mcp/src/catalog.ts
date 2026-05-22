@@ -90,6 +90,11 @@ export function validateReadOnly(sql: string): string | null {
 	return null;
 }
 
+export interface TableRef {
+	ns: string;
+	table: string;
+}
+
 export interface MissingPartitionFilter {
 	ns: string;
 	table: string;
@@ -97,20 +102,38 @@ export interface MissingPartitionFilter {
 	missing: string[];
 }
 
+// Matches `FROM ns.table` and `JOIN ns.table` (the JOIN form covers INNER/LEFT/RIGHT/FULL/CROSS
+// since the modifier precedes the JOIN keyword). Returns deduplicated refs; self-joins collapse
+// to one entry, which is the right grain for both partition-filter checks and event tagging.
+const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+(\w+)\.(\w+)\b/gi;
+
+export function extractTableRefs(sql: string): TableRef[] {
+	const { stripped } = scrub(sql);
+	const seen = new Set<string>();
+	const refs: TableRef[] = [];
+	let match: RegExpExecArray | null;
+	while ((match = TABLE_REF_PATTERN.exec(stripped)) !== null) {
+		const ns = match[1].toLowerCase();
+		const table = match[2].toLowerCase();
+		const key = `${ns}.${table}`;
+		if (!seen.has(key)) {
+			seen.add(key);
+			refs.push({ ns, table });
+		}
+	}
+	return refs;
+}
+
 export function findMissingPartitionFilters(sql: string, catalog: Catalog): MissingPartitionFilter[] {
 	const { stripped } = scrub(sql);
 	const upper = stripped.trim().toUpperCase();
 	if (!upper.startsWith("SELECT") && !upper.startsWith("WITH")) return [];
 
-	const results: MissingPartitionFilter[] = [];
-	const tablePattern = /\bFROM\s+(\w+)\.(\w+)\b/gi;
 	const whereIdx = upper.indexOf("WHERE");
 	const whereClause = whereIdx !== -1 ? upper.slice(whereIdx) : "";
 
-	let match: RegExpExecArray | null;
-	while ((match = tablePattern.exec(stripped)) !== null) {
-		const ns = match[1].toLowerCase();
-		const table = match[2].toLowerCase();
+	const results: MissingPartitionFilter[] = [];
+	for (const { ns, table } of extractTableRefs(sql)) {
 		const tableDef = catalog.namespaces[ns]?.tables[table];
 		if (!tableDef) continue;
 		const partitionCols = tableDef.partition_by;
