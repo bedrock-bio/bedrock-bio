@@ -39,6 +39,7 @@ Punch list and roadmap for the Bedrock Bio MCP server. This file is the source o
   - Decided against rate-limiting `data.bedrock.bio` (R2 egress is free; static JSON is edge-cached; bulk download is already possible via the published `credentials.json` S3 keys, so HTTP rate limit would be theater).
 - **2026-05-22** — Phase 2 Step 1 (PR #26): `analytics_engine_datasets` binding `MCP_EVENTS` → `bedrock_bio_mcp_events` (prod) / `bedrock_bio_mcp_events_dev` (dev). Nothing writes yet. Also: DO binding renamed `MCP_OBJECT` → `MCP_SERVER` (label only); README staleness pass.
 - **2026-05-22** — Phase 2 Step 2 (PR #27): `extractTableRefs` extracted from `catalog.ts`, now walks `JOIN` as well as `FROM`. Closes a latent bug where JOIN'd partitioned tables bypassed partition-filter validation. `findMissingPartitionFilters` is now a thin wrapper.
+- **2026-05-22** — Phase 2 Step 3: `logEvent(env, event)` dual-writes to `console.log` (unchanged) and `MCP_EVENTS.writeDataPoint(...)`. Blob/double/index positions pinned in a header comment in `log.ts` (reordering would break saved AE SQL queries). `sql_hash` computed via FNV-1a 32-bit doubled → 16 hex chars; auto-derived from `sql` if not caller-supplied. AE writes are try/catch'd with `console.warn` on failure — never breaks a tool call. `MCP_EVENTS` reached via `Cloudflare.Env` (wrangler-generated). New `src/log.test.ts` (11 tests) covers hash determinism, positional shape, default-fill, caller-supplied hash, no-binding back-compat, and writeDataPoint-throws safety.
 
 ## Pending release
 
@@ -47,11 +48,11 @@ Merged to `main` and live on dev (`mcp-dev.bedrock.bio`), but won't reach prod u
 - Dev/prod environment split
 - Phase 1 observability
 - Workflow-injected `ACCOUNT_ID` / `R2_BUCKET_NAME` + single-bucket consolidation
-- Phase 2 Steps 1–2 (AE binding + `extractTableRefs` refactor)
+- Phase 2 Steps 1–3 (AE binding + `extractTableRefs` refactor + dual-write `logEvent`)
 
 ## In progress
 
-Phase 2 (Analytics Engine) — Steps 3–6 (see Queued).
+Phase 2 (Analytics Engine) — Steps 4–6 (see Queued).
 
 ## Queued
 
@@ -74,7 +75,7 @@ AE event shape (tentative — finalize during Step 3):
 Step-by-step:
 1. ✅ Add `analytics_engine_datasets` binding to `wrangler.jsonc`.
 2. ✅ Refactor `catalog.ts` to expose `extractTableRefs(sql)`; expand to walk `JOIN` as well as `FROM`.
-3. Extend `logEvent()` to accept the AE binding and dual-write. `console.log` path unchanged in both envs.
+3. ✅ Extend `logEvent()` to accept the AE binding and dual-write. `console.log` path unchanged in both envs.
 4. Per-table fan-out for `query` events.
 5. Add `mcp/scripts/ae-query.sh` (or `.ts`) wrapping `POST .../analytics_engine/sql` with a new narrow-scoped token (Account Analytics:Read — not reusing `mcp-r2-sql-ro-prod`). Bundle ~5 canned queries: daily volume by tool, top namespaces/tables, outcome breakdown, p50/p95/p99 of `duration_ms` + `r2_sql_ms`, top `sql_hash`es.
 6. Deploy to dev, generate events via MCP Inspector, verify shape by querying `bedrock_bio_mcp_events_dev`. Then promote in the next batched release.
