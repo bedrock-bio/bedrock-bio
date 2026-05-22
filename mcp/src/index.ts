@@ -283,7 +283,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 	}
 }
 
-const mcpHandler = BedrockBioMcpServer.serve("/mcp", { binding: "MCP_OBJECT" });
+const mcpHandler = BedrockBioMcpServer.serve("/mcp", { binding: "MCP_SERVER" });
 
 export default {
 	fetch(request: Request, env: Env, ctx: ExecutionContext) {

@@ -9,7 +9,7 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "MCP_OBJECT",
+				"name": "MCP_SERVER",
 				"class_name": "BedrockBioMcpServer"
 			}
 		]
@@ -20,6 +20,12 @@
 			"new_sqlite_classes": ["BedrockBioMcpServer"]
 		}
 	],
+	"analytics_engine_datasets": [
+		{
+			"binding": "MCP_EVENTS",
+			"dataset": "bedrock_bio_mcp_events"
+		}
+	],
 	"env": {
 		"dev": {
 			"name": "bedrock-bio-mcp-dev",
@@ -27,7 +33,7 @@
 			"durable_objects": {
 				"bindings": [
 					{
-						"name": "MCP_OBJECT",
+						"name": "MCP_SERVER",
 						"class_name": "BedrockBioMcpServer"
 					}
 				]
@@ -36,6 +42,12 @@
 				{
 					"tag": "v1",
 					"new_sqlite_classes": ["BedrockBioMcpServer"]
+				}
+			],
+			"analytics_engine_datasets": [
+				{
+					"binding": "MCP_EVENTS",
+					"dataset": "bedrock_bio_mcp_events_dev"
 				}
 			]
 		}
