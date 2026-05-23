@@ -45,6 +45,9 @@ Punch list and roadmap for the Bedrock Bio MCP server. This file is the source o
   - **Wrong token type.** Both `R2_SQL_TOKEN` Worker secrets were generic Cloudflare API tokens with the `Workers R2 SQL: Read` permission (from My Profile → API Tokens). That permission row exists but silently 401s against the R2 SQL service. R2 SQL needs an **R2 API token** created from R2 → Manage API tokens, with **Admin Read & Write** (verified empirically — `Admin Read only` also 401s, despite docs claiming it suffices for Data Catalog). Tokens renamed `mcp-r2-rw-{dev,prod}` to reflect actual scope; saved in `reference_r2_sql_token` memory.
   - **Deferred wash:** the earlier `warehouse` field added to the R2 SQL request body (mirroring wrangler's CLI shape) was reverted — URL routing alone is sufficient once the bucket name is non-empty.
 - **2026-05-22** — Prod token rotation pending. `mcp-r2-rw-prod` is in place but the prod query path has never been exercised end-to-end. Verify before/during the next batched release.
+- **2026-05-22** — Phase 2 Step 4: per-table fan-out for `query` events. `logEvent(env, event, tables?)` now emits one base AE row (empty `namespace`/`table`) plus one child row per `TableRef` from `extractTableRefs(sql)` when `tables` is passed — children share the base's `sql_hash` as the join key. Makes `GROUP BY namespace, table` trivial against the AE dataset. `console.log` stays one-line-per-call (Workers Logs is for ops debugging, not analytics) and includes a `tables: string[]` field (omitted when empty) for human reading. Internal `writeAE()` helper consolidates the positional schema in one place and returns a boolean so fan-out aborts after the first failure (one warn, no subsequent attempts). `list_tables` and `describe_namespace` call `logEvent` without `tables` — no fan-out path triggered. 5 new tests in `log.test.ts` cover N-table fan-out, zero-table base-only, console.log shape, no-binding back-compat, and first-write-failure abort.
+- **2026-05-22** — Code hygiene pass folded into Step 4: dropped `Catalog.version`/`CatalogNamespace.id`/`CatalogTable.metadata_json` from the catalog types (none read by MCP — they describe the cross-cutting manifest schema, not MCP's view). Added private `refsFromStripped()` helper so `findMissingPartitionFilters` doesn't double-call `scrub` via `extractTableRefs`. Replaced the nested `try { try { } catch { } } catch { }` R2 SQL retry block with a 2-iteration `for` loop in `index.ts`. Added one-line comment explaining the SHOW/DESCRIBE/EXPLAIN early return in `findMissingPartitionFilters`.
+- **2026-05-22** — **Phase 2 schema rewrite**: superseded the single-dataset fan-out design with a four-dataset normalized schema. New datasets `mcp_sessions`, `mcp_calls`, `mcp_queries`, `mcp_tables` (dev `_dev`-suffixed). Bindings `MCP_SESSIONS`, `MCP_CALLS`, `MCP_QUERIES`, `MCP_TABLES`. Dropped the `bedrock_bio_` dataset prefix (account-scoped namespace is already unique). The single `mcp_events` dataset is abandoned in CF (no API to delete). Full analyst-facing schema lives in `mcp/SCHEMA.md`; positional schema enforced by typed tuples in `log.ts` (reorder breaks compile). Captured every R2 SQL response metric we previously dropped (`request_id`, `bytes_scanned`, `files_scanned`, `r2_requests_count`, error code). Added `cache_hit` (catalog cache outcome per call), `tool_args` (JSON of args for future polymorphism), `country`/`colo`/`user_agent` slots reserved on SESSIONS (currently empty — capturing them requires plumbing the HTTP request through the agents/mcp SDK lifecycle; tracked as a follow-up). `sql` truncated to 4900 chars for AE writes; `sql_hash` always over full text so pattern grouping stays correct. `logToolCall` orchestrator writes CALLS first then aborts on its failure (no orphan QUERIES/TABLES rows); TABLES loop tolerates partial failures. 15 tests in `log.test.ts` cover positional shapes, truncation, fan-out, abort-on-CALLS-failure, partial TABLES tolerance, console.log shape.
 
 ## Pending release
 
@@ -53,11 +56,14 @@ Merged to `main` and live on dev (`mcp-dev.bedrock.bio`), but won't reach prod u
 - Dev/prod environment split
 - Phase 1 observability
 - Workflow-injected `ACCOUNT_ID` / `R2_BUCKET_NAME` + single-bucket consolidation
-- Phase 2 Steps 1–3 (AE binding + `extractTableRefs` refactor + dual-write `logEvent`)
+- Phase 2 Steps 1–4 (AE bindings + `extractTableRefs` refactor + dual-write `logEvent` + four-dataset normalized schema replacing the single-dataset fan-out)
+- R2 SQL bucket-var + token-type bugfixes (queries reached `outcome: ok` on dev for the first time)
+- Code hygiene: trimmed unused catalog type fields, scrub dedup, retry-loop cleanup, Worker-fetch security note
+- New `mcp/SCHEMA.md` analyst-facing schema doc
 
 ## In progress
 
-Phase 2 (Analytics Engine) — Steps 4–6 (see Queued).
+Phase 2 (Analytics Engine) — Steps 5–6 (see Queued).
 
 ## Queued
 
@@ -66,28 +72,25 @@ Builds on Phase 1's `logEvent()`. Adds an AE binding and extends the helper to d
 
 Workers Logs (Phase 1) stays as-is for per-event ops debugging (~24h–7d retention, dashboard/`wrangler tail` only). AE is the analytics layer (90d retention, SQL via HTTPS API). Same `logEvent()` helper fans out to both.
 
-Resolved schema decisions:
-- **Datasets**: two, same binding name `MCP_EVENTS`, different dataset per env — `bedrock_bio_mcp_events` (prod, the analytics source of truth) and `bedrock_bio_mcp_events_dev` (dev, write-only, exists to validate the AE write path on every deploy; never queried for analytics). Rationale: AE is product analytics, not ops correlation, so cross-env queries aren't useful; dataset-name-as-env-filter avoids "forgot the WHERE environment=…" footguns; account-namespaced prefix matches the rest of the infra and avoids future collisions. `writeDataPoint` is fire-and-forget with no ack, so dev writes are the only way to verify wiring end-to-end before promoting.
-- **SQL logging**: log both full `sql` text (blob, for drill-down) and `sql_hash` (FNV-1a, 16 hex, blob, for `GROUP BY` on recurring query patterns). AE's 90d retention exceeds Workers Logs', so AE becomes the long-tail record of query text.
-- **No `environment` blob** — dataset name carries the distinction. Frees a blob slot.
-
-AE event shape (tentative — finalize during Step 3):
-- `blobs`: `event_type`, `tool`, `outcome`, `version`, `sql_hash`, `sql`, `namespace`, `table`
-- `doubles`: `duration_ms`, `r2_sql_ms`, `r2_sql_status`, `rows_returned`, `rows_total`
-- `indexes`: `tool` (sampling key — low-cardinality, 3 values today)
-- For `query` events touching multiple tables: emit one base event + one child row per referenced table (same `sql_hash` as foreign key, `namespace`/`table` populated only on children) to make `GROUP BY namespace, table` trivial.
+Resolved schema decisions (post-rewrite — see `mcp/SCHEMA.md` for the canonical column reference):
+- **Four normalized datasets**: `mcp_sessions` (1 per MCP connection), `mcp_calls` (1 per tool invocation, universal fact table), `mcp_queries` (1 per `query`-tool call, type-specific extension), `mcp_tables` (1 per (call, distinct touched table), shared dimension). Each env gets its own `_dev`-suffixed copy (`mcp_sessions_dev`, etc.). Binding names are uppercase: `MCP_SESSIONS`, `MCP_CALLS`, `MCP_QUERIES`, `MCP_TABLES`. Rationale: normalization eliminates the sentinel-based `WHERE blob7=''` queries the prior fan-out design required, gives each dataset a uniform tight schema, and matches the polymorphic pattern that future tool types (e.g. methods on Modal) will extend by adding their own type-specific dataset analogous to `mcp_queries`. `mcp_tables` already generalizes to "tables referenced by any tool call," not just SQL queries.
+- **No `bedrock_bio_` prefix on dataset names** — AE namespaces are per-account; the prefix was doubly-prefixed and redundant.
+- **Positional schema enforced in code** via typed tuples in `log.ts` (`SessionsBlobs`, `CallsBlobs`, etc.). Reordering breaks compile; renaming is free. Analyst-facing doc in `mcp/SCHEMA.md` mirrors the same positions.
+- **SQL truncation**: `sql` capped at 4900 chars for AE writes (UTF-8 headroom under the 5KB blob cap); `sql_hash` always computed over the full untruncated text so pattern grouping stays correct.
+- **Single-dataset fan-out abandoned**: original PROGRESS.md design (one `mcp_events` dataset with a base-row + per-table-child fan-out keyed by `sql_hash`) was rewritten mid-Step-4 in favor of normalization. The `bedrock_bio_mcp_events` / `_dev` datasets in CF are stranded (no API to delete) but unused.
 
 Step-by-step:
-1. ✅ Add `analytics_engine_datasets` binding to `wrangler.jsonc`.
+1. ✅ Add `analytics_engine_datasets` bindings to `wrangler.jsonc` (now four bindings per env).
 2. ✅ Refactor `catalog.ts` to expose `extractTableRefs(sql)`; expand to walk `JOIN` as well as `FROM`.
-3. ✅ Extend `logEvent()` to accept the AE binding and dual-write. `console.log` path unchanged in both envs.
-4. Per-table fan-out for `query` events.
-5. Add `mcp/scripts/ae-query.sh` (or `.ts`) wrapping `POST .../analytics_engine/sql` with a new narrow-scoped token (Account Analytics:Read — not reusing `mcp-r2-sql-ro-prod`). Bundle ~5 canned queries: daily volume by tool, top namespaces/tables, outcome breakdown, p50/p95/p99 of `duration_ms` + `r2_sql_ms`, top `sql_hash`es.
-6. Deploy to dev, generate events via MCP Inspector, verify shape by querying `bedrock_bio_mcp_events_dev`. Then promote in the next batched release.
+3. ✅ Implement dual-write helpers (`logSession`, `logToolCall`) with `console.log` + per-dataset `writeDataPoint`.
+4. ✅ Per-table fan-out for `query` events (now expressed as `mcp_tables` rows linked via `call_id`).
+5. Add `mcp/scripts/ae-query.sh` (or `.ts`) wrapping `POST .../analytics_engine/sql` with a new narrow-scoped token (Account Analytics:Read). Bundle ~5 canned queries from `mcp/SCHEMA.md`: daily volume by tool, top namespaces/tables, outcome breakdown, p50/p95/p99 of `duration_ms` + `r2_sql_ms`, top `sql_hash`es, client-funnel join.
+6. Deploy to dev, generate events via MCP Inspector, verify shape by querying each of `mcp_sessions_dev` / `mcp_calls_dev` / `mcp_queries_dev` / `mcp_tables_dev`. Then promote in the next batched release.
 
 Risks to confirm before starting:
-- AE Free-tier write/query quotas (10M writes/day, 10K queries/day account-wide) — well above current traffic but verify the account is on Workers Free, not Bundled.
-- No PII in `sql` blob today (user-authored read-only queries against public bio data). Revisit if auth + per-user identifiers ever land.
+- **AE Free quotas**: 100K writes/day, 10K reads/day per account on Workers Free; 10M writes/month + 1M reads/month included on Workers Paid ($0.25/M and $1/M overage). At plausible early-stage traffic the four-dataset design generates ~100K writes/month — single-digit-percent of the Paid included allowance.
+- **No PII in `sql` blob today** (user-authored read-only queries against public bio data). Revisit if auth + per-user identifiers ever land.
+- **Follow-up: capture `country`/`colo`/`user_agent` on `mcp_sessions`** — slots reserved but populated empty today. Requires plumbing the HTTP request through the agents/mcp SDK's `setInitializeRequest` lifecycle (the DO doesn't see the original request at that hook). Track separately.
 
 ### User-facing docs + discoverability
 - Section in `bedrock-bio-www` showing how to connect Claude Desktop / Claude Code / Cursor to the MCP server
