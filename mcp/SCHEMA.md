@@ -57,6 +57,7 @@ One row per tool invocation, written in the handler's `finally` block.
 | blob4 | `worker_version` | string | denormalized — correlate outcomes to versions without joining SESSIONS |
 | blob5 | `error_message` | string | populated only when `outcome != 'ok'`; bounded by AE's 5KB blob cap |
 | blob6 | `tool_args` | string (JSON) | JSON-stringified tool input args, *excluding* fields with their own column. For `query`: `"{}"` (sql lives on QUERIES). For `describe_namespace`: `'{"namespace":"..."}'`. For `list_tables`: `"{}"`. |
+| blob7 | `manifest_published_at` | string | ISO 8601 UTC timestamp from `manifest.json` `published_at` field — which manifest version was active for this call. Empty when the catalog fetch failed and there's no cached copy. |
 | double1 | `duration_ms` | number | handler wall-clock latency |
 | double2 | `cache_hit` | number | 0 or 1 — was the catalog manifest served from the DO cache for this call |
 | index | `tool` | string | low-cardinality (currently 3 values: `list_tables`, `query`, `describe_namespace`) |

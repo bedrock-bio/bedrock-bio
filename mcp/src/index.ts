@@ -35,7 +35,8 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 	private sessionLogged = false;
 
 	// One catalog load attempt per request. Returns { catalog, cached } so handlers can record
-	// cache_hit. On transient errors we fall back to the previously cached copy if one exists.
+	// cache_hit and the manifest's published_at on each call. On transient errors we fall back
+	// to the previously cached copy if one exists.
 	private async loadCatalog(): Promise<{ catalog: Catalog; cached: boolean }> {
 		const now = Date.now();
 		if (this.catalog && now - this.catalogFetchedAt < CATALOG_TTL_MS) {
@@ -91,12 +92,14 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				let outcome = "ok";
 				let cached = false;
 				let error_message = "";
+				let manifest_published_at = "";
 				try {
 					let catalog: Catalog;
 					try {
 						const result = await this.loadCatalog();
 						catalog = result.catalog;
 						cached = result.cached;
+						manifest_published_at = catalog.published_at ?? "";
 					} catch (err) {
 						outcome = "catalog_unavailable";
 						error_message = err instanceof Error ? err.message : String(err);
@@ -132,6 +135,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						outcome,
 						error_message: outcome === "ok" ? "" : error_message,
 						tool_args: "{}",
+						manifest_published_at,
 						duration_ms: Date.now() - t0,
 						cache_hit: cached ? 1 : 0,
 					};
@@ -169,6 +173,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				let outcome = "ok";
 				let cached = false;
 				let error_message = "";
+				let manifest_published_at = "";
 				let r2_sql_ms = 0;
 				let r2_sql_status = 0;
 				let rows_returned = 0;
@@ -191,6 +196,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						const result = await this.loadCatalog();
 						catalog = result.catalog;
 						cached = result.cached;
+						manifest_published_at = catalog.published_at ?? "";
 					} catch {}
 
 					if (catalog) {
@@ -285,6 +291,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						outcome,
 						error_message: outcome === "ok" ? "" : error_message,
 						tool_args: "{}",
+						manifest_published_at,
 						duration_ms: Date.now() - t0,
 						cache_hit: cached ? 1 : 0,
 					};
@@ -334,12 +341,14 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				let outcome = "ok";
 				let cached = false;
 				let error_message = "";
+				let manifest_published_at = "";
 				try {
 					let catalog: Catalog;
 					try {
 						const result = await this.loadCatalog();
 						catalog = result.catalog;
 						cached = result.cached;
+						manifest_published_at = catalog.published_at ?? "";
 					} catch (err) {
 						outcome = "catalog_unavailable";
 						error_message = err instanceof Error ? err.message : String(err);
@@ -385,6 +394,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						outcome,
 						error_message: outcome === "ok" ? "" : error_message,
 						tool_args: JSON.stringify({ namespace }),
+						manifest_published_at,
 						duration_ms: Date.now() - t0,
 						cache_hit: cached ? 1 : 0,
 					};

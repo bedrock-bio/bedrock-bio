@@ -13,6 +13,7 @@ const baseCall: CallRow = {
 	outcome: "ok",
 	error_message: "",
 	tool_args: "{}",
+	manifest_published_at: "2026-05-22T15:30:00Z",
 	duration_ms: 42,
 	cache_hit: 1,
 };
@@ -121,7 +122,7 @@ describe("logToolCall", () => {
 		logToolCall({ MCP_CALLS, MCP_QUERIES, MCP_TABLES }, baseCall);
 
 		const c = (MCP_CALLS as any).writeDataPoint.mock.calls[0][0];
-		expect(c.blobs).toEqual(["call-1", "session-1", "ok", version, "", "{}"]);
+		expect(c.blobs).toEqual(["call-1", "session-1", "ok", version, "", "{}", "2026-05-22T15:30:00Z"]);
 		expect(c.doubles).toEqual([42, 1]);
 		expect(c.indexes).toEqual(["list_tables"]);
 		expect((MCP_QUERIES as any).writeDataPoint).not.toHaveBeenCalled();

@@ -2,6 +2,7 @@
 // consume the same manifest with additional fields (notably `metadata_json` per table); add
 // fields here when MCP starts to use them.
 export interface Catalog {
+	published_at?: string;
 	namespaces: Record<string, CatalogNamespace>;
 }
 

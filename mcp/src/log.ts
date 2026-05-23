@@ -23,6 +23,7 @@ type CallsBlobs = [
 	worker_version: string,
 	error_message: string,
 	tool_args: string,
+	manifest_published_at: string,
 ];
 type CallsDoubles = [
 	duration_ms: number,
@@ -74,6 +75,7 @@ export interface CallRow {
 	outcome: string;
 	error_message: string;
 	tool_args: string;
+	manifest_published_at: string;
 	duration_ms: number;
 	cache_hit: number;
 }
@@ -159,6 +161,7 @@ export function logToolCall(
 		version,
 		call.error_message,
 		call.tool_args,
+		call.manifest_published_at,
 	];
 	const callDoubles: CallsDoubles = [call.duration_ms, call.cache_hit];
 	if (!tryWrite(env.MCP_CALLS, { blobs: callBlobs, doubles: callDoubles, indexes: [call.tool] })) return;
