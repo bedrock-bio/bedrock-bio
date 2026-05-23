@@ -164,7 +164,7 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						}
 					}
 
-					// Execute query
+					// SECURITY: env.R2_SQL_TOKEN (R2 Admin R/W) is in scope here — any new outbound fetch in this Worker is a secret-exfil surface. See mcp/CLAUDE.md.
 					const url = `https://api.sql.cloudflarestorage.com/api/v1/accounts/${this.env.ACCOUNT_ID}/r2-sql/query/${this.env.R2_BUCKET_NAME}`;
 					const headers = {
 						Authorization: `Bearer ${this.env.R2_SQL_TOKEN}`,
