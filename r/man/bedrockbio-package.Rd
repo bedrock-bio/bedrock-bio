@@ -12,8 +12,8 @@ Efficiently access the 'Bedrock Bio' library of open-access computational biolog
 Useful links:
 \itemize{
   \item \url{https://bedrock.bio}
-  \item \url{https://github.com/bedrock-bio/bedrock-bio-client}
-  \item Report bugs at \url{https://github.com/bedrock-bio/bedrock-bio-client/issues}
+  \item \url{https://github.com/bedrock-bio/bedrock-bio}
+  \item Report bugs at \url{https://github.com/bedrock-bio/bedrock-bio/issues}
 }
 
 }

@@ -31,11 +31,11 @@ install.packages("bedrockbio")
 ```
 
 Or install the current development version from
-[GitHub](https://github.com/bedrock-bio/bedrock-bio-client):
+[GitHub](https://github.com/bedrock-bio/bedrock-bio):
 
 ```r
 # install.packages("pak")
-pak::pak("bedrock-bio/bedrock-bio-client/r")
+pak::pak("bedrock-bio/bedrock-bio/r")
 ```
 
 ## Examples
@@ -83,4 +83,4 @@ df <- load_table(
 ## Dataset Requests
 
 To request the addition of a new table to the library, open an
-[issue](https://github.com/bedrock-bio/bedrock-bio-client/issues).
+[issue](https://github.com/bedrock-bio/bedrock-bio/issues).

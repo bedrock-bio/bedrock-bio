@@ -31,10 +31,10 @@ pip install bedrock-bio
 ```
 
 Or install the current development version from
-[GitHub](https://github.com/bedrock-bio/bedrock-bio-client):
+[GitHub](https://github.com/bedrock-bio/bedrock-bio):
 
 ```bash
-pip install git+https://github.com/bedrock-bio/bedrock-bio-client.git@main#subdirectory=python
+pip install git+https://github.com/bedrock-bio/bedrock-bio.git@main#subdirectory=python
 ```
 
 ## Examples
@@ -67,4 +67,4 @@ df = bb.load_table('ukb_ppp.pqtls', ancestry='EUR', protein_id='A0FGR8', panel='
 ## Dataset Requests
 
 To request the addition of a new table to the library, open an
-[issue](https://github.com/bedrock-bio/bedrock-bio-client/issues).
+[issue](https://github.com/bedrock-bio/bedrock-bio/issues).
