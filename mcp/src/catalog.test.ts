@@ -46,10 +46,10 @@ describe("validateReadOnly", () => {
 describe("findMissingPartitionFilters", () => {
 	it("returns empty for unpartitioned tables regardless of WHERE", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				dbsnp: {
-					id: "dbsnp", name: "dbSNP", description: "", citation: {}, source_url: "", license: "",
+					name: "dbSNP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						variants: {
 							description: "", partition_by: [], sort_by: [], related_tables: {}, columns: [],
@@ -63,10 +63,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("returns empty when all partition cols appear in WHERE", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry", "protein_id"], sort_by: [], related_tables: {}, columns: [],
@@ -81,10 +81,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("reports missing partition cols", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry", "protein_id"], sort_by: [], related_tables: {}, columns: [],
@@ -99,10 +99,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("reports all partition cols missing when WHERE is absent", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry", "protein_id"], sort_by: [], related_tables: {}, columns: [],
@@ -117,10 +117,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("matches lowercase and multi-line SQL", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry"], sort_by: [], related_tables: {}, columns: [],
@@ -134,16 +134,16 @@ describe("findMissingPartitionFilters", () => {
 	});
 
 	it("ignores unknown ns.table references", () => {
-		const catalog: Catalog = { version: 1, namespaces: {} };
+		const catalog: Catalog = { namespaces: {} };
 		expect(findMissingPartitionFilters("SELECT * FROM unknown.table LIMIT 1", catalog)).toEqual([]);
 	});
 
 	it("returns empty for non-SELECT/WITH queries even when table is partitioned", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry"], sort_by: [], related_tables: {}, columns: [],
@@ -157,10 +157,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("does not satisfy partition requirement from a string literal that matches the column name", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry"], sort_by: [], related_tables: {}, columns: [],
@@ -176,10 +176,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("does not match table references that appear inside string literals", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry"], sort_by: [], related_tables: {}, columns: [],
@@ -187,7 +187,7 @@ describe("findMissingPartitionFilters", () => {
 					},
 				},
 				dbsnp: {
-					id: "dbsnp", name: "dbSNP", description: "", citation: {}, source_url: "", license: "",
+					name: "dbSNP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						variants: {
 							description: "", partition_by: [], sort_by: [], related_tables: {}, columns: [],
@@ -202,10 +202,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("matches partition columns referenced via double-quoted identifiers", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry"], sort_by: [], related_tables: {}, columns: [],
@@ -220,10 +220,10 @@ describe("findMissingPartitionFilters", () => {
 
 	it("reports missing partition cols on JOINed tables", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						assays: {
 							description: "", partition_by: [], sort_by: [], related_tables: {}, columns: [],
@@ -245,10 +245,10 @@ describe("findMissingPartitionFilters", () => {
 	// behavior; pinned to catch regressions if the matcher gets stricter.
 	it("accepts table aliases that reference partition columns", () => {
 		const catalog: Catalog = {
-			version: 1,
+			
 			namespaces: {
 				ukb_ppp: {
-					id: "ukb_ppp", name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
+					name: "UKB PPP", description: "", citation: {}, source_url: "", license: "",
 					tables: {
 						pqtls: {
 							description: "", partition_by: ["ancestry"], sort_by: [], related_tables: {}, columns: [],

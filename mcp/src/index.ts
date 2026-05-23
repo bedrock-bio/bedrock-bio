@@ -1,8 +1,8 @@
 import { McpAgent } from "agents/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { type Catalog, validateReadOnly, findMissingPartitionFilters, formatResultWarning } from "./catalog.js";
-import { logEvent } from "./log.js";
+import { type Catalog, validateReadOnly, findMissingPartitionFilters, formatResultWarning, extractTableRefs } from "./catalog.js";
+import { logSession, logToolCall, fnv1a16, type CallRow, type QueryRow, type TableRow } from "./log.js";
 import { version } from "../package.json";
 
 interface Env extends Cloudflare.Env {
@@ -32,29 +32,48 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 
 	private catalog: Catalog | null = null;
 	private catalogFetchedAt = 0;
+	private sessionLogged = false;
 
-	private async loadCatalog(): Promise<Catalog> {
+	// One catalog load attempt per request. Returns { catalog, cached } so handlers can record
+	// cache_hit and the manifest's published_at on each call. On transient errors we fall back
+	// to the previously cached copy if one exists.
+	private async loadCatalog(): Promise<{ catalog: Catalog; cached: boolean }> {
 		const now = Date.now();
 		if (this.catalog && now - this.catalogFetchedAt < CATALOG_TTL_MS) {
-			return this.catalog;
+			return { catalog: this.catalog, cached: true };
 		}
 
-		let response: Response;
 		try {
-			response = await fetch(MANIFEST_URL);
+			const response = await fetch(MANIFEST_URL);
+			if (!response.ok) throw new Error("Data catalog not available. Contact the administrator.");
+			this.catalog = await response.json<Catalog>();
+			this.catalogFetchedAt = now;
+			return { catalog: this.catalog, cached: false };
 		} catch (err) {
-			if (this.catalog) return this.catalog;
+			if (this.catalog) return { catalog: this.catalog, cached: true };
 			throw err;
 		}
+	}
 
-		if (!response.ok) {
-			if (this.catalog) return this.catalog;
-			throw new Error("Data catalog not available. Contact the administrator.");
-		}
-
-		this.catalog = await response.json<Catalog>();
-		this.catalogFetchedAt = now;
-		return this.catalog;
+	// MCP `initialize` handshake hook — first place we see clientInfo + protocolVersion.
+	// Idempotent against DO restarts: in-memory flag prevents double-write within one
+	// DO lifetime; cold starts may emit a duplicate session row, dedupe at query time.
+	// TODO: country/colo/user_agent are populated empty for now — capturing them requires
+	// plumbing the HTTP request through the agents/mcp SDK lifecycle. Track separately.
+	async setInitializeRequest(initializeRequest: any): Promise<void> {
+		await super.setInitializeRequest(initializeRequest);
+		if (this.sessionLogged) return;
+		this.sessionLogged = true;
+		const params = initializeRequest?.params ?? {};
+		logSession(this.env, {
+			session_id: this.ctx.id.toString(),
+			client_name: params.clientInfo?.name ?? "",
+			client_version: params.clientInfo?.version ?? "",
+			user_agent: "",
+			protocol_version: params.protocolVersion ?? "",
+			country: "",
+			colo: "",
+		});
 	}
 
 	async init() {
@@ -68,15 +87,23 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				inputSchema: {},
 			},
 			async () => {
+				const call_id = crypto.randomUUID();
 				const t0 = Date.now();
 				let outcome = "ok";
+				let cached = false;
+				let error_message = "";
+				let manifest_published_at = "";
 				try {
 					let catalog: Catalog;
 					try {
-						catalog = await this.loadCatalog();
+						const result = await this.loadCatalog();
+						catalog = result.catalog;
+						cached = result.cached;
+						manifest_published_at = catalog.published_at ?? "";
 					} catch (err) {
 						outcome = "catalog_unavailable";
-						return { isError: true, content: [{ type: "text" as const, text: err instanceof Error ? err.message : String(err) }] };
+						error_message = err instanceof Error ? err.message : String(err);
+						return { isError: true, content: [{ type: "text" as const, text: error_message }] };
 					}
 
 					const namespaces = Object.entries(catalog.namespaces).map(([ns, nsDef]) => ({
@@ -98,9 +125,21 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					return { content: [{ type: "text" as const, text: JSON.stringify(namespaces, null, 2) }] };
 				} catch (err) {
 					outcome = "exception";
+					error_message = err instanceof Error ? err.message : String(err);
 					throw err;
 				} finally {
-					logEvent(this.env, { event_type: "tool_call", tool: "list_tables", outcome, duration_ms: Date.now() - t0 });
+					const call: CallRow = {
+						call_id,
+						session_id: this.ctx.id.toString(),
+						tool: "list_tables",
+						outcome,
+						error_message: outcome === "ok" ? "" : error_message,
+						tool_args: "{}",
+						manifest_published_at,
+						duration_ms: Date.now() - t0,
+						cache_hit: cached ? 1 : 0,
+					};
+					logToolCall(this.env, call);
 				}
 			}
 		);
@@ -129,22 +168,35 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				inputSchema: { sql: z.string().describe("Read-only SQL query (SELECT, SHOW, DESCRIBE, EXPLAIN, or WITH)") },
 			},
 			async ({ sql }) => {
+				const call_id = crypto.randomUUID();
 				const t0 = Date.now();
 				let outcome = "ok";
-				let r2_sql_ms: number | undefined;
-				let r2_sql_status: number | undefined;
-				let rows_returned: number | undefined;
-				let rows_total: number | undefined;
+				let cached = false;
+				let error_message = "";
+				let manifest_published_at = "";
+				let r2_sql_ms = 0;
+				let r2_sql_status = 0;
+				let rows_returned = 0;
+				let rows_total = 0;
+				let bytes_scanned = 0;
+				let files_scanned = 0;
+				let r2_requests_count = 0;
+				let r2_sql_error_code = 0;
+				let r2_sql_request_id = "";
 				try {
 					const validationError = validateReadOnly(sql);
 					if (validationError) {
 						outcome = "validation_error";
+						error_message = validationError;
 						return { isError: true, content: [{ type: "text" as const, text: validationError }] };
 					}
 
 					let catalog: Catalog | null = null;
 					try {
-						catalog = await this.loadCatalog();
+						const result = await this.loadCatalog();
+						catalog = result.catalog;
+						cached = result.cached;
+						manifest_published_at = catalog.published_at ?? "";
 					} catch {}
 
 					if (catalog) {
@@ -152,13 +204,13 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 						if (missingFilters.length > 0) {
 							outcome = "partition_filter_error";
 							const { ns, table, partitionCols, missing } = missingFilters[0];
+							error_message = `Query on ${ns}.${table} is missing required partition filters: ${missing.join(", ")}. ` +
+								`Every query must include a WHERE filter for all partition_by columns: ${partitionCols.join(", ")}.`;
 							return {
 								isError: true,
 								content: [{
 									type: "text" as const,
-									text: `Query on ${ns}.${table} is missing required partition filters: ${missing.join(", ")}. ` +
-										`Every query must include a WHERE filter for all partition_by columns: ${partitionCols.join(", ")}. ` +
-										`If you need data across multiple partitions, run separate queries for each partition value.`,
+									text: `${error_message} If you need data across multiple partitions, run separate queries for each partition value.`,
 								}],
 							};
 						}
@@ -173,36 +225,47 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					const body = JSON.stringify({ query: sql });
 
 					const tFetch = Date.now();
-					let response: Response;
-					try {
-						response = await fetch(url, { method: "POST", headers, body });
-					} catch {
+					let response: Response | undefined;
+					for (let attempt = 0; attempt < 2; attempt++) {
 						try {
 							response = await fetch(url, { method: "POST", headers, body });
+							break;
 						} catch {
-							r2_sql_ms = Date.now() - tFetch;
-							outcome = "r2_sql_unreachable";
-							return { isError: true, content: [{ type: "text" as const, text: "R2 SQL is unreachable. Try again shortly." }] };
+							// retry once on network error
 						}
 					}
 					r2_sql_ms = Date.now() - tFetch;
+					if (!response) {
+						outcome = "r2_sql_unreachable";
+						error_message = "R2 SQL is unreachable";
+						return { isError: true, content: [{ type: "text" as const, text: "R2 SQL is unreachable. Try again shortly." }] };
+					}
 					r2_sql_status = response.status;
 
 					if (!response.ok) {
 						outcome = "r2_sql_http_error";
-						return { isError: true, content: [{ type: "text" as const, text: `R2 SQL HTTP ${response.status}: ${await response.text()}` }] };
+						const text = await response.text();
+						error_message = `R2 SQL HTTP ${response.status}: ${text}`;
+						return { isError: true, content: [{ type: "text" as const, text: error_message }] };
 					}
 
 					const data = (await response.json()) as any;
 					if (!data.success) {
 						outcome = "r2_sql_query_error";
-						const error = data.errors?.map((e: any) => e.message).join("; ") ?? "Unknown error";
-						const hint = error.includes("table not found") ? "Use the list_tables tool to discover available table names." : undefined;
+						const errs = data.errors ?? [];
+						r2_sql_error_code = errs[0]?.code ?? 0;
+						error_message = errs.map((e: any) => e.message).join("; ") || "Unknown error";
+						const hint = error_message.includes("table not found") ? "Use the list_tables tool to discover available table names." : undefined;
 						return {
 							isError: true,
-							content: [{ type: "text" as const, text: JSON.stringify({ error, sql, ...(hint ? { hint } : {}) }, null, 2) }],
+							content: [{ type: "text" as const, text: JSON.stringify({ error: error_message, sql, ...(hint ? { hint } : {}) }, null, 2) }],
 						};
 					}
+
+					r2_sql_request_id = data.result?.request_id ?? "";
+					bytes_scanned = data.result?.metrics?.bytes_scanned ?? 0;
+					files_scanned = data.result?.metrics?.files_scanned ?? 0;
+					r2_requests_count = data.result?.metrics?.r2_requests_count ?? 0;
 
 					const columns = (data.result?.schema ?? []).map((s: { name: string }) => s.name);
 					const allRows: Record<string, unknown>[] = data.result?.rows ?? [];
@@ -216,9 +279,47 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					return { content: [{ type: "text" as const, text: `${header}\n\n${JSON.stringify(rows, null, 2)}` }] };
 				} catch (err) {
 					outcome = "exception";
+					error_message = err instanceof Error ? err.message : String(err);
 					throw err;
 				} finally {
-					logEvent(this.env, { event_type: "tool_call", tool: "query", outcome, duration_ms: Date.now() - t0, sql, r2_sql_ms, r2_sql_status, rows_returned, rows_total });
+					const sql_hash = fnv1a16(sql);
+					const session_id = this.ctx.id.toString();
+					const call: CallRow = {
+						call_id,
+						session_id,
+						tool: "query",
+						outcome,
+						error_message: outcome === "ok" ? "" : error_message,
+						tool_args: "{}",
+						manifest_published_at,
+						duration_ms: Date.now() - t0,
+						cache_hit: cached ? 1 : 0,
+					};
+					const query: QueryRow = {
+						call_id,
+						session_id,
+						sql,
+						sql_hash,
+						outcome,
+						r2_sql_request_id,
+						r2_sql_ms,
+						r2_sql_status,
+						rows_returned,
+						rows_total,
+						bytes_scanned,
+						files_scanned,
+						r2_requests_count,
+						r2_sql_error_code,
+					};
+					const tables: TableRow[] = extractTableRefs(sql).map((t) => ({
+						call_id,
+						session_id,
+						sql_hash,
+						namespace: t.ns,
+						table: t.table,
+						outcome,
+					}));
+					logToolCall(this.env, call, query, tables);
 				}
 			}
 		);
@@ -235,22 +336,31 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 				},
 			},
 			async ({ namespace }) => {
+				const call_id = crypto.randomUUID();
 				const t0 = Date.now();
 				let outcome = "ok";
+				let cached = false;
+				let error_message = "";
+				let manifest_published_at = "";
 				try {
 					let catalog: Catalog;
 					try {
-						catalog = await this.loadCatalog();
+						const result = await this.loadCatalog();
+						catalog = result.catalog;
+						cached = result.cached;
+						manifest_published_at = catalog.published_at ?? "";
 					} catch (err) {
 						outcome = "catalog_unavailable";
-						return { isError: true, content: [{ type: "text" as const, text: err instanceof Error ? err.message : String(err) }] };
+						error_message = err instanceof Error ? err.message : String(err);
+						return { isError: true, content: [{ type: "text" as const, text: error_message }] };
 					}
 
 					const nsDef = catalog.namespaces[namespace];
 					if (!nsDef) {
 						outcome = "namespace_not_found";
 						const available = Object.keys(catalog.namespaces).join(", ");
-						return { isError: true, content: [{ type: "text" as const, text: `Namespace '${namespace}' not found. Available: ${available}` }] };
+						error_message = `Namespace '${namespace}' not found. Available: ${available}`;
+						return { isError: true, content: [{ type: "text" as const, text: error_message }] };
 					}
 
 					const tables = Object.entries(nsDef.tables).map(([tableName, tableDef]) => {
@@ -274,9 +384,21 @@ export class BedrockBioMcpServer extends McpAgent<Env> {
 					};
 				} catch (err) {
 					outcome = "exception";
+					error_message = err instanceof Error ? err.message : String(err);
 					throw err;
 				} finally {
-					logEvent(this.env, { event_type: "tool_call", tool: "describe_namespace", outcome, duration_ms: Date.now() - t0, namespace });
+					const call: CallRow = {
+						call_id,
+						session_id: this.ctx.id.toString(),
+						tool: "describe_namespace",
+						outcome,
+						error_message: outcome === "ok" ? "" : error_message,
+						tool_args: JSON.stringify({ namespace }),
+						manifest_published_at,
+						duration_ms: Date.now() - t0,
+						cache_hit: cached ? 1 : 0,
+					};
+					logToolCall(this.env, call);
 				}
 			}
 		);

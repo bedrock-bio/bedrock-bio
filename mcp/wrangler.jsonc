@@ -21,10 +21,10 @@
 		}
 	],
 	"analytics_engine_datasets": [
-		{
-			"binding": "MCP_EVENTS",
-			"dataset": "bedrock_bio_mcp_events"
-		}
+		{ "binding": "MCP_SESSIONS", "dataset": "mcp_sessions" },
+		{ "binding": "MCP_CALLS", "dataset": "mcp_calls" },
+		{ "binding": "MCP_QUERIES", "dataset": "mcp_queries" },
+		{ "binding": "MCP_TABLES", "dataset": "mcp_tables" }
 	],
 	"env": {
 		"dev": {
@@ -45,10 +45,10 @@
 				}
 			],
 			"analytics_engine_datasets": [
-				{
-					"binding": "MCP_EVENTS",
-					"dataset": "bedrock_bio_mcp_events_dev"
-				}
+				{ "binding": "MCP_SESSIONS", "dataset": "mcp_sessions_dev" },
+				{ "binding": "MCP_CALLS", "dataset": "mcp_calls_dev" },
+				{ "binding": "MCP_QUERIES", "dataset": "mcp_queries_dev" },
+				{ "binding": "MCP_TABLES", "dataset": "mcp_tables_dev" }
 			]
 		}
 	}

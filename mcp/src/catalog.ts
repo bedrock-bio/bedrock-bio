@@ -1,10 +1,12 @@
+// These types describe only the manifest fields MCP actually reads. The R/Python clients
+// consume the same manifest with additional fields (notably `metadata_json` per table); add
+// fields here when MCP starts to use them.
 export interface Catalog {
-	version: number;
+	published_at?: string;
 	namespaces: Record<string, CatalogNamespace>;
 }
 
 export interface CatalogNamespace {
-	id: string;
 	name: string;
 	description: string;
 	citation: Record<string, string | number>;
@@ -17,7 +19,6 @@ export interface CatalogNamespace {
 export interface CatalogTable {
 	description: string;
 	instructions?: string;
-	metadata_json?: string;
 	partition_by: string[];
 	sort_by: string[];
 	related_tables: Record<string, Record<string, string>>;
@@ -107,8 +108,7 @@ export interface MissingPartitionFilter {
 // to one entry, which is the right grain for both partition-filter checks and event tagging.
 const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+(\w+)\.(\w+)\b/gi;
 
-export function extractTableRefs(sql: string): TableRef[] {
-	const { stripped } = scrub(sql);
+function refsFromStripped(stripped: string): TableRef[] {
 	const seen = new Set<string>();
 	const refs: TableRef[] = [];
 	let match: RegExpExecArray | null;
@@ -124,16 +124,21 @@ export function extractTableRefs(sql: string): TableRef[] {
 	return refs;
 }
 
+export function extractTableRefs(sql: string): TableRef[] {
+	return refsFromStripped(scrub(sql).stripped);
+}
+
 export function findMissingPartitionFilters(sql: string, catalog: Catalog): MissingPartitionFilter[] {
 	const { stripped } = scrub(sql);
 	const upper = stripped.trim().toUpperCase();
+	// SHOW/DESCRIBE/EXPLAIN don't reference data rows, so no partition filter applies.
 	if (!upper.startsWith("SELECT") && !upper.startsWith("WITH")) return [];
 
 	const whereIdx = upper.indexOf("WHERE");
 	const whereClause = whereIdx !== -1 ? upper.slice(whereIdx) : "";
 
 	const results: MissingPartitionFilter[] = [];
-	for (const { ns, table } of extractTableRefs(sql)) {
+	for (const { ns, table } of refsFromStripped(stripped)) {
 		const tableDef = catalog.namespaces[ns]?.tables[table];
 		if (!tableDef) continue;
 		const partitionCols = tableDef.partition_by;
