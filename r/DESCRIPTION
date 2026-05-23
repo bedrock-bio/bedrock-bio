@@ -15,8 +15,8 @@ Description: Efficiently access the 'Bedrock Bio' library of open-access
 Language: en-US
 License: GPL (>= 3)
 URL: https://bedrock.bio,
-    https://github.com/bedrock-bio/bedrock-bio-client
-BugReports: https://github.com/bedrock-bio/bedrock-bio-client/issues
+    https://github.com/bedrock-bio/bedrock-bio
+BugReports: https://github.com/bedrock-bio/bedrock-bio/issues
 Depends: R (>= 4.1)
 Imports:
     curl,

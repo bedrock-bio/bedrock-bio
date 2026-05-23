@@ -16,4 +16,4 @@ See the `python/` and `r/` subdirectories for client packages.
 ## Dataset Requests
 
 To request the addition of a new dataset to the library, open an
-[issue](https://github.com/bedrock-bio/bedrock-bio-client/issues).
+[issue](https://github.com/bedrock-bio/bedrock-bio/issues).
