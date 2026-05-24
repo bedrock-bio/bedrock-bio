@@ -90,6 +90,17 @@ class TestConfig:
         assert "nullable" not in c2
         assert "allowed_values" not in c2
 
+    def test_namespaces_returns_dict_with_expected_structure(self):
+        result = config.get_namespaces()
+        assert isinstance(result, dict)
+        assert len(result) > 0
+        for ns_id, entry in result.items():
+            assert entry["id"] == ns_id
+            assert isinstance(entry["name"], str)
+            assert isinstance(entry["description"], str)
+            assert isinstance(entry["tables"], list)
+            assert all(fqn.startswith(f"{ns_id}.") for fqn in entry["tables"])
+
     def test_credentials_returns_expected_keys(self):
         result = config.get_credentials()
         expected_keys = {
@@ -130,12 +141,15 @@ class TestConfig:
 
     def test_reset_clears_cached_state(self):
         config.get_catalog()
+        config.get_namespaces()
         config.get_credentials()
         config.get_connection()
         assert config.catalog is not None
+        assert config.namespaces is not None
         assert config.credentials is not None
         assert config.conn is not None
         config.reset()
         assert config.catalog is None
+        assert config.namespaces is None
         assert config.credentials is None
         assert config.conn is None

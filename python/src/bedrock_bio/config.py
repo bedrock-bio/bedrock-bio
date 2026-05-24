@@ -5,17 +5,19 @@ from dataclasses import dataclass
 
 CATALOG_URL = "https://data.bedrock.bio/manifest.json"
 CREDENTIALS_URL = "https://data.bedrock.bio/credentials.json"
+COLUMN_FIELDS = ("name", "type", "description", "nullable", "allowed_values")
 
 
 @dataclass
 class Config:
     catalog: dict[str, dict] | None = None
+    namespaces: dict[str, dict] | None = None
     credentials: dict[str, str] | None = None
     conn: duckdb.DuckDBPyConnection | None = None
 
-    def get_catalog(self) -> dict[str, dict]:
+    def _load_manifest(self) -> None:
         if self.catalog is not None:
-            return self.catalog
+            return
 
         try:
             request = urllib.request.Request(
@@ -30,24 +32,12 @@ class Config:
             )
 
         self.catalog = {}
+        self.namespaces = {}
         for ns, ns_data in raw["namespaces"].items():
-            for table, meta in ns_data["tables"].items():
-                columns = [
-                    {
-                        k: col[k]
-                        for k in (
-                            "name",
-                            "type",
-                            "description",
-                            "nullable",
-                            "allowed_values",
-                        )
-                        if k in col
-                    }
-                    for col in meta.get("columns", [])
-                ]
+            table_fqns = [f"{ns}.{t}" for t in ns_data["tables"]]
 
-                self.catalog[f"{ns}.{table}"] = {
+            for fqn, (_table, meta) in zip(table_fqns, ns_data["tables"].items()):
+                self.catalog[fqn] = {
                     "metadata_json": meta["metadata_json"],
                     "partition_by": list(meta.get("partition_by", [])),
                     "sort_by": list(meta.get("sort_by", [])),
@@ -55,9 +45,30 @@ class Config:
                     "citation": ns_data.get("citation"),
                     "source_url": ns_data.get("source_url", ""),
                     "license": ns_data.get("license", ""),
-                    "columns": columns,
+                    "columns": [
+                        {k: col[k] for k in COLUMN_FIELDS if k in col}
+                        for col in meta.get("columns", [])
+                    ],
                 }
+
+            self.namespaces[ns] = {
+                "id": ns,
+                "name": ns_data.get("name", ""),
+                "description": ns_data.get("description", ""),
+                "source_url": ns_data.get("source_url", ""),
+                "license": ns_data.get("license", ""),
+                "instructions": ns_data.get("instructions", ""),
+                "citation": ns_data.get("citation"),
+                "tables": table_fqns,
+            }
+
+    def get_catalog(self) -> dict[str, dict]:
+        self._load_manifest()
         return self.catalog
+
+    def get_namespaces(self) -> dict[str, dict]:
+        self._load_manifest()
+        return self.namespaces
 
     def get_credentials(self) -> dict[str, str]:
         if self.credentials is not None:
@@ -98,6 +109,7 @@ class Config:
         if self.conn is not None:
             self.conn.close()
         self.catalog = None
+        self.namespaces = None
         self.credentials = None
         self.conn = None
 
