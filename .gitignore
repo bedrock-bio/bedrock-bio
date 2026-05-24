@@ -2,6 +2,10 @@
 r/.Rhistory
 credentials*.json
 
+# R CMD check leftovers
+*.Rcheck/
+..Rcheck/
+
 # Python-generated files
 __pycache__/
 *.py[oc]

@@ -34,9 +34,10 @@ class Config:
         self.catalog = {}
         self.namespaces = {}
         for ns, ns_data in raw["namespaces"].items():
-            table_fqns = [f"{ns}.{t}" for t in ns_data["tables"]]
-
-            for fqn, (_table, meta) in zip(table_fqns, ns_data["tables"].items()):
+            table_fqns = []
+            for table_name, meta in ns_data["tables"].items():
+                fqn = f"{ns}.{table_name}"
+                table_fqns.append(fqn)
                 self.catalog[fqn] = {
                     "metadata_json": meta["metadata_json"],
                     "partition_by": list(meta.get("partition_by", [])),

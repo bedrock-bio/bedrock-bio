@@ -14,7 +14,7 @@ def describe_table(name: str) -> dict:
     -------
     dict
         Table metadata including description, citation, source_url,
-        license, and column definitions.
+        license, partition_by, sort_by, and column definitions.
 
     Raises
     ------

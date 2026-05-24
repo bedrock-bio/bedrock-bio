@@ -6,7 +6,7 @@ fetch_json <- function(url) {
   readLines(con, warn = FALSE)
 }
 
-COLUMN_FIELDS <- c("name", "type", "description", "nullable", "allowed_values")
+column_fields <- c("name", "type", "description", "nullable", "allowed_values")
 
 #' @noRd
 load_manifest <- function() {
@@ -39,7 +39,10 @@ load_manifest <- function() {
         citation = ns_data$citation,
         source_url = ns_data$source_url,
         license = ns_data$license,
-        columns = lapply(meta$columns, function(col) col[intersect(names(col), COLUMN_FIELDS)])
+        columns = lapply(
+          meta$columns,
+          function(col) col[intersect(names(col), column_fields)]
+        )
       )
     }
 
