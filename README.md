@@ -11,7 +11,14 @@ unwieldy datasets.
 
 ## Usage
 
-See the `python/` and `r/` subdirectories for client packages.
+This monorepo holds three access methods, one per subdirectory:
+
+- `r/` — R client package ([CRAN](https://cran.r-project.org/package=bedrockbio))
+- `python/` — Python client package ([PyPI](https://pypi.org/project/bedrock-bio/))
+- `mcp/` — MCP server for LLM clients, hosted at `https://mcp.bedrock.bio/mcp`
+
+See [bedrock.bio](https://bedrock.bio) for the dataset catalog and full
+documentation.
 
 ## Dataset Requests
 
