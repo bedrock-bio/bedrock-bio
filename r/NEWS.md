@@ -1,3 +1,9 @@
+# bedrockbio 1.4.0
+
+* `list_namespaces()`: list available namespaces (data sources).
+* `describe_namespace()`: view namespace metadata, citation, license,
+  instructions, and the namespace's tables.
+
 # bedrockbio 1.3.1
 
 * Internal: hardened SQL string handling for catalog-derived paths and
