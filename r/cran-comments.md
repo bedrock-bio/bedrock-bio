@@ -2,7 +2,8 @@
 
 0 errors | 0 warnings | 0 notes
 
-* This is a new submission.
+* This release adds `list_namespaces()` and `describe_namespace()` for
+  discovering and inspecting data sources. See `NEWS.md` for details.
 * OS_type: unix — the DuckDB iceberg extension is not available for
   Windows (R on Windows uses MinGW, and the iceberg extension has no
   MinGW build). See https://github.com/duckdb/duckdb-iceberg for

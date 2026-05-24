@@ -11,7 +11,7 @@ describe_table(name)
 }
 \value{
 A named list with name, description, citation, source_url,
-license, and columns.
+license, partition_by, sort_by, and columns.
 }
 \description{
 Describe a table's metadata, citation, and columns

@@ -1,19 +1,9 @@
-reset_pkg <- function() {
-  pkg <- bedrockbio:::pkg
-  pkg$catalog <- NULL
-  pkg$credentials <- NULL
-  if (!is.null(pkg$conn)) {
-    try(DBI::dbDisconnect(pkg$conn, shutdown = TRUE), silent = TRUE)
-  }
-  pkg$conn <- NULL
-}
-
 # --- get_catalog ---
 
 test_that("get_catalog returns a named list of entry lists", {
   skip_on_cran()
   skip_if_offline()
-  reset_pkg()
+  bedrockbio:::reset()
   result <- bedrockbio:::get_catalog()
   expect_type(result, "list")
   expect_true(length(result) > 0)
@@ -29,20 +19,20 @@ test_that("get_catalog returns a named list of entry lists", {
 test_that("get_catalog caches result", {
   skip_on_cran()
   skip_if_offline()
-  reset_pkg()
+  bedrockbio:::reset()
   first <- bedrockbio:::get_catalog()
   second <- bedrockbio:::get_catalog()
   expect_identical(first, second)
 })
 
 test_that("get_catalog errors when URL is unreachable", {
-  reset_pkg()
+  bedrockbio:::reset()
   pkg <- bedrockbio:::pkg
   original_url <- pkg$catalog_url
   pkg$catalog_url <- "https://invalid.invalid/manifest.json"
   on.exit({
     pkg$catalog_url <- original_url
-    reset_pkg()
+    bedrockbio:::reset()
   })
   expect_error(
     suppressWarnings(bedrockbio:::get_catalog()),
@@ -51,7 +41,7 @@ test_that("get_catalog errors when URL is unreachable", {
 })
 
 test_that("get_catalog preserves whitelisted column keys and strips others", {
-  reset_pkg()
+  bedrockbio:::reset()
   fixture <- tempfile(fileext = ".json")
   jsonlite::write_json(
     list(
@@ -97,7 +87,7 @@ test_that("get_catalog preserves whitelisted column keys and strips others", {
   on.exit({
     pkg$catalog_url <- original_url
     unlink(fixture)
-    reset_pkg()
+    bedrockbio:::reset()
   })
 
   result <- bedrockbio:::get_catalog()
@@ -118,12 +108,31 @@ test_that("get_catalog preserves whitelisted column keys and strips others", {
   expect_false("allowed_values" %in% names(c2))
 })
 
+# --- get_namespaces ---
+
+test_that("get_namespaces returns a named list of namespace entries", {
+  skip_on_cran()
+  skip_if_offline()
+  bedrockbio:::reset()
+  result <- bedrockbio:::get_namespaces()
+  expect_type(result, "list")
+  expect_true(length(result) > 0)
+  for (ns_id in names(result)) {
+    entry <- result[[ns_id]]
+    expect_equal(entry$id, ns_id)
+    expect_type(entry$name, "character")
+    expect_type(entry$description, "character")
+    expect_type(entry$tables, "character")
+    expect_true(all(startsWith(entry$tables, paste0(ns_id, "."))))
+  }
+})
+
 # --- get_credentials ---
 
 test_that("get_credentials returns expected keys", {
   skip_on_cran()
   skip_if_offline()
-  reset_pkg()
+  bedrockbio:::reset()
   result <- bedrockbio:::get_credentials()
   expected_names <- c(
     "R2_ACCOUNT_ID",
@@ -140,20 +149,20 @@ test_that("get_credentials returns expected keys", {
 test_that("get_credentials caches result", {
   skip_on_cran()
   skip_if_offline()
-  reset_pkg()
+  bedrockbio:::reset()
   first <- bedrockbio:::get_credentials()
   second <- bedrockbio:::get_credentials()
   expect_identical(first, second)
 })
 
 test_that("get_credentials errors when URL is unreachable", {
-  reset_pkg()
+  bedrockbio:::reset()
   pkg <- bedrockbio:::pkg
   original_url <- pkg$credentials_url
   pkg$credentials_url <- "https://invalid.invalid/credentials.json"
   on.exit({
     pkg$credentials_url <- original_url
-    reset_pkg()
+    bedrockbio:::reset()
   })
   expect_error(
     suppressWarnings(bedrockbio:::get_credentials()),
@@ -166,7 +175,7 @@ test_that("get_credentials errors when URL is unreachable", {
 test_that("get_connection returns DuckDB with S3 secret", {
   skip_on_cran()
   skip_if_offline()
-  reset_pkg()
+  bedrockbio:::reset()
   conn <- bedrockbio:::get_connection()
   expect_s4_class(conn, "duckdb_connection")
   secrets <- DBI::dbGetQuery(conn, "FROM duckdb_secrets()")
@@ -178,24 +187,27 @@ test_that("get_connection returns DuckDB with S3 secret", {
 test_that("get_connection caches", {
   skip_on_cran()
   skip_if_offline()
-  reset_pkg()
+  bedrockbio:::reset()
   first <- bedrockbio:::get_connection()
   second <- bedrockbio:::get_connection()
   expect_identical(first, second)
 })
 
-test_that("reset clears cached catalog, credentials, and conn", {
+test_that("reset clears cached catalog, namespaces, credentials, and conn", {
   skip_on_cran()
   skip_if_offline()
   bedrockbio:::get_catalog()
+  bedrockbio:::get_namespaces()
   bedrockbio:::get_credentials()
   bedrockbio:::get_connection()
   pkg <- bedrockbio:::pkg
   expect_false(is.null(pkg$catalog))
+  expect_false(is.null(pkg$namespaces))
   expect_false(is.null(pkg$credentials))
   expect_false(is.null(pkg$conn))
-  reset_pkg()
+  bedrockbio:::reset()
   expect_null(pkg$catalog)
+  expect_null(pkg$namespaces)
   expect_null(pkg$credentials)
   expect_null(pkg$conn)
 })

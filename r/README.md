@@ -10,17 +10,21 @@ datasets. Tables support predicate pushdown and projection to the cloud
 storage backend, enabling quick, iterative access to otherwise massive,
 unwieldy tables.
 
-`bedrockbio` consists of three user-facing functions:
+`bedrockbio` consists of five user-facing functions:
 
+- `list_namespaces()`: returns a character vector of available namespace
+  (data source) identifiers
+- `describe_namespace("<name>")`: returns metadata, citation, license,
+  instructions, and the tables for a namespace
 - `list_tables()`: returns a character vector of available table identifiers
-- `describe_table("<name>")`: returns metadata, citation, and column
-  definitions for a table
-- `load_table("<name>", ...)`: takes a table name and optional partition
-  filters, and returns a lazily-evaluated data frame
+- `describe_table("<name>")`: returns metadata, citation, partition and sort
+  keys, and column definitions for a table
+- `load_table("<name>")`: returns a lazily-evaluated data frame for a table
 
 `dplyr` verbs (`filter`, `select`) can be used on the data frame returned by
-`load_table` to push down additional row filters and column selections to the
-storage backend.
+`load_table` to push down row filters and column selections to the storage
+backend. Filtering on the partition columns returned by `describe_table`
+gives the fastest reads.
 
 ## Installation
 
@@ -59,16 +63,16 @@ Describe a table to see its metadata, citation, and columns:
 describe_table("ukb_ppp.pqtls")
 ```
 
-Lazily load a table (optionally with partition filters for partitioned tables), 
-select columns, and collect the relevant subset into an in-memory data frame:
+Lazily load a table, filter on partition columns (for fastest reads), select
+columns, and collect the relevant subset into an in-memory data frame:
 
 ```r
-df <- load_table(
-  "ukb_ppp.pqtls",
-  ancestry = "EUR",
-  protein_id = "A0FGR8",
-  panel = "Inflammation"
-) |>
+df <- load_table("ukb_ppp.pqtls") |>
+  filter(
+    ancestry == "EUR",
+    protein_id == "A0FGR8",
+    panel == "Inflammation"
+  ) |>
   select(
     chromosome,
     position,
