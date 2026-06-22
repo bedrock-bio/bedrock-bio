@@ -21,5 +21,8 @@ test_that("BB_ENV=dev uses dev host", {
   bedrockbio:::.onLoad(NULL, NULL)
   pkg <- bedrockbio:::pkg
   expect_equal(pkg$manifest_url, "https://data-dev.bedrock.bio/manifest.json")
-  expect_equal(pkg$credentials_url, "https://data-dev.bedrock.bio/credentials.json")
+  expect_equal(
+    pkg$credentials_url,
+    "https://data-dev.bedrock.bio/credentials.json"
+  )
 })

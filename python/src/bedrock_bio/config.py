@@ -14,18 +14,18 @@ class Config:
 
     @property
     def base_url(self) -> str:
-        if os.environ.get('BB_ENV') == 'dev':
-            return 'https://data-dev.bedrock.bio'
+        if os.environ.get("BB_ENV") == "dev":
+            return "https://data-dev.bedrock.bio"
         else:
-            return 'https://data.bedrock.bio'
+            return "https://data.bedrock.bio"
 
     @property
     def manifest_url(self) -> str:
-        return f'{self.base_url}/manifest.json'
+        return f"{self.base_url}/manifest.json"
 
     @property
     def credentials_url(self) -> str:
-        return f'{self.base_url}/credentials.json'
+        return f"{self.base_url}/credentials.json"
 
     @property
     def timeout(self) -> int:
@@ -33,7 +33,7 @@ class Config:
 
     @property
     def table_fields(self) -> tuple[str]:
-        return ('name', 'type', 'description', 'nullable', 'allowed_values')
+        return ("name", "type", "description", "nullable", "allowed_values")
 
     def _load_manifest(self) -> None:
         if self.manifest is not None:
@@ -41,15 +41,15 @@ class Config:
 
         try:
             request = urllib.request.Request(
-                self.manifest_url, headers={'User-Agent': 'bedrock-bio'}
+                self.manifest_url, headers={"User-Agent": "bedrock-bio"}
             )
-            with urllib.request.urlopen(
-                request, timeout=self.timeout
-            ) as response:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = json.loads(response.read())
 
         except Exception:
-            raise ConnectionError(f'Unable to access manifest URL {self.manifest_url!r}')
+            raise ConnectionError(
+                f"Unable to access manifest URL {self.manifest_url!r}"
+            )
 
         self.manifest = {}
         self.namespaces = {}
@@ -57,7 +57,6 @@ class Config:
         for ns, ns_data in raw["namespaces"].items():
             table_fqns = []
             for table_name, metadata in ns_data["tables"].items():
-
                 fqn = f"{ns}.{table_name}"
                 table_fqns.append(fqn)
 
@@ -106,7 +105,9 @@ class Config:
                 self.credentials = json.loads(response.read())
 
         except Exception:
-            raise ConnectionError(f'Unable to access credentials URL {self.credentials_url!r}')
+            raise ConnectionError(
+                f"Unable to access credentials URL {self.credentials_url!r}"
+            )
 
         return self.credentials
 
