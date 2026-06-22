@@ -13,7 +13,7 @@ def list_namespaces() -> list[str]:
     Raises
     ------
     ConnectionError
-        If the catalog cannot be accessed.
+        If the manifest cannot be accessed.
 
     Examples
     --------

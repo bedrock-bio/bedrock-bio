@@ -19,17 +19,17 @@
 #'
 #' @export
 load_table <- function(name) {
-  catalog <- get_catalog()
+  manifest <- get_manifest()
 
-  if (!name %in% names(catalog)) {
+  if (!name %in% names(manifest)) {
     stop(
-      "Table '", name, "' not found in catalog. ",
+      "Table '", name, "' not found in manifest. ",
       "See list_tables() for available tables.",
       call. = FALSE
     )
   }
 
-  entry <- catalog[[name]]
+  entry <- manifest[[name]]
   conn <- get_connection()
   query <- DBI::sqlInterpolate(
     conn,

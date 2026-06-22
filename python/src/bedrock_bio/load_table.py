@@ -22,9 +22,9 @@ def load_table(name: str) -> duckdb.DuckDBPyRelation:
     Raises
     ------
     ConnectionError
-        If the catalog cannot be accessed.
+        If the manifest cannot be accessed.
     ValueError
-        If the table is not found in the catalog.
+        If the table is not found in the manifest.
 
     Examples
     --------
@@ -39,15 +39,15 @@ def load_table(name: str) -> duckdb.DuckDBPyRelation:
     ... )
 
     """
-    catalog = config.get_catalog()
+    manifest = config.get_manifest()
 
-    if name not in catalog:
+    if name not in manifest:
         raise ValueError(
-            f"Table '{name}' not found in catalog. "
+            f"Table '{name}' not found in manifest. "
             f"See list_tables() for available tables."
         )
 
-    entry = catalog[name]
+    entry = manifest[name]
     conn = config.get_connection()
     escaped = entry["metadata_json"].replace("'", "''")
     return conn.sql(f"SELECT * FROM iceberg_scan('{escaped}')")

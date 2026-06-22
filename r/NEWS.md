@@ -1,3 +1,11 @@
+# bedrockbio 1.4.1
+
+* `reset()`: now exported — clears the cached manifest, credentials, and
+  connection (useful after credentials are rotated during a session).
+* `BB_ENV=dev` points the client at the development data host
+  (`data-dev.bedrock.bio`).
+* Internal: timeouts on manifest and credentials requests.
+
 # bedrockbio 1.4.0
 
 * `list_namespaces()`: list available namespaces (data sources).

@@ -10,6 +10,6 @@
 #'
 #' @export
 list_tables <- function() {
-  catalog <- get_catalog()
-  names(catalog)
+  manifest <- get_manifest()
+  names(manifest)
 }

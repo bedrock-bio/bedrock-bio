@@ -13,17 +13,17 @@
 #'
 #' @export
 describe_table <- function(name) {
-  catalog <- get_catalog()
+  manifest <- get_manifest()
 
-  if (!name %in% names(catalog)) {
+  if (!name %in% names(manifest)) {
     stop(
-      "Table '", name, "' not found in catalog. ",
+      "Table '", name, "' not found in manifest. ",
       "See list_tables() for available tables.",
       call. = FALSE
     )
   }
 
-  entry <- catalog[[name]]
+  entry <- manifest[[name]]
   list(
     name = name,
     description = entry$description,

@@ -1,54 +1,76 @@
 import duckdb
 import json
+import os
 import urllib.request
 from dataclasses import dataclass
-
-CATALOG_URL = "https://data.bedrock.bio/manifest.json"
-CREDENTIALS_URL = "https://data.bedrock.bio/credentials.json"
-COLUMN_FIELDS = ("name", "type", "description", "nullable", "allowed_values")
 
 
 @dataclass
 class Config:
-    catalog: dict[str, dict] | None = None
+    manifest: dict[str, dict] | None = None
     namespaces: dict[str, dict] | None = None
     credentials: dict[str, str] | None = None
     conn: duckdb.DuckDBPyConnection | None = None
 
+    @property
+    def base_url(self) -> str:
+        if os.environ.get("BB_ENV") == "dev":
+            return "https://data-dev.bedrock.bio"
+        else:
+            return "https://data.bedrock.bio"
+
+    @property
+    def manifest_url(self) -> str:
+        return f"{self.base_url}/manifest.json"
+
+    @property
+    def credentials_url(self) -> str:
+        return f"{self.base_url}/credentials.json"
+
+    @property
+    def timeout(self) -> int:
+        return 10
+
+    @property
+    def table_fields(self) -> tuple[str]:
+        return ("name", "type", "description", "nullable", "allowed_values")
+
     def _load_manifest(self) -> None:
-        if self.catalog is not None:
+        if self.manifest is not None:
             return
 
         try:
             request = urllib.request.Request(
-                CATALOG_URL, headers={"User-Agent": "bedrock-bio"}
+                self.manifest_url, headers={"User-Agent": "bedrock-bio"}
             )
-            with urllib.request.urlopen(request) as response:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = json.loads(response.read())
+
         except Exception:
             raise ConnectionError(
-                f"Unable to access manifest URL '{CATALOG_URL}'. "
-                "Check internet connection and try again."
+                f"Unable to access manifest URL {self.manifest_url!r}"
             )
 
-        self.catalog = {}
+        self.manifest = {}
         self.namespaces = {}
+
         for ns, ns_data in raw["namespaces"].items():
             table_fqns = []
-            for table_name, meta in ns_data["tables"].items():
+            for table_name, metadata in ns_data["tables"].items():
                 fqn = f"{ns}.{table_name}"
                 table_fqns.append(fqn)
-                self.catalog[fqn] = {
-                    "metadata_json": meta["metadata_json"],
-                    "partition_by": list(meta.get("partition_by", [])),
-                    "sort_by": list(meta.get("sort_by", [])),
-                    "description": meta.get("description", ""),
+
+                self.manifest[fqn] = {
+                    "metadata_json": metadata["metadata_json"],
+                    "partition_by": list(metadata.get("partition_by", [])),
+                    "sort_by": list(metadata.get("sort_by", [])),
+                    "description": metadata.get("description", ""),
                     "citation": ns_data.get("citation"),
                     "source_url": ns_data.get("source_url", ""),
                     "license": ns_data.get("license", ""),
                     "columns": [
-                        {k: col[k] for k in COLUMN_FIELDS if k in col}
-                        for col in meta.get("columns", [])
+                        {tf: col[tf] for tf in self.table_fields if tf in col}
+                        for col in metadata.get("columns", [])
                     ],
                 }
 
@@ -63,9 +85,9 @@ class Config:
                 "tables": table_fqns,
             }
 
-    def get_catalog(self) -> dict[str, dict]:
+    def get_manifest(self) -> dict[str, dict]:
         self._load_manifest()
-        return self.catalog
+        return self.manifest
 
     def get_namespaces(self) -> dict[str, dict]:
         self._load_manifest()
@@ -77,15 +99,16 @@ class Config:
 
         try:
             request = urllib.request.Request(
-                CREDENTIALS_URL, headers={"User-Agent": "bedrock-bio"}
+                self.credentials_url, headers={"User-Agent": "bedrock-bio"}
             )
-            with urllib.request.urlopen(request) as response:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 self.credentials = json.loads(response.read())
+
         except Exception:
             raise ConnectionError(
-                f"Unable to fetch credentials from '{CREDENTIALS_URL}'. "
-                "Check internet connection and try again."
+                f"Unable to access credentials URL {self.credentials_url!r}"
             )
+
         return self.credentials
 
     def get_connection(self) -> duckdb.DuckDBPyConnection:
@@ -109,7 +132,7 @@ class Config:
     def reset(self):
         if self.conn is not None:
             self.conn.close()
-        self.catalog = None
+        self.manifest = None
         self.namespaces = None
         self.credentials = None
         self.conn = None

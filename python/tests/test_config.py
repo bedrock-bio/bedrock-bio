@@ -7,8 +7,8 @@ from bedrock_bio.config import config
 
 
 class TestConfig:
-    def test_catalog_returns_dict_with_expected_structure(self):
-        result = config.get_catalog()
+    def test_manifest_returns_dict_with_expected_structure(self):
+        result = config.get_manifest()
         assert isinstance(result, dict)
         assert len(result) > 0
         for key, entry in result.items():
@@ -19,20 +19,21 @@ class TestConfig:
             assert isinstance(entry["sort_by"], list)
             assert isinstance(entry["columns"], list)
 
-    def test_catalog_caches_result(self):
-        first = config.get_catalog()
-        second = config.get_catalog()
+    def test_manifest_caches_result(self):
+        first = config.get_manifest()
+        second = config.get_manifest()
         assert first is second
 
-    def test_catalog_errors_when_url_unreachable(self, monkeypatch):
+    def test_manifest_errors_when_url_unreachable(self, monkeypatch):
         monkeypatch.setattr(
-            "bedrock_bio.config.CATALOG_URL",
-            "https://invalid.invalid/manifest.json",
+            type(config),
+            "manifest_url",
+            property(lambda self: "https://invalid.invalid/manifest.json"),
         )
         with pytest.raises(ConnectionError, match="Unable to access manifest URL"):
-            config.get_catalog()
+            config.get_manifest()
 
-    def test_catalog_preserves_whitelisted_column_keys(self, monkeypatch, tmp_path):
+    def test_manifest_preserves_whitelisted_column_keys(self, monkeypatch, tmp_path):
         fixture = tmp_path / "manifest.json"
         fixture.write_text(
             json.dumps(
@@ -71,9 +72,11 @@ class TestConfig:
                 }
             )
         )
-        monkeypatch.setattr("bedrock_bio.config.CATALOG_URL", f"file://{fixture}")
+        monkeypatch.setattr(
+            type(config), "manifest_url", property(lambda self: f"file://{fixture}")
+        )
 
-        result = config.get_catalog()
+        result = config.get_manifest()
         cols = result["test_ns.test_tbl"]["columns"]
 
         c1 = cols[0]
@@ -120,10 +123,11 @@ class TestConfig:
 
     def test_credentials_errors_when_url_unreachable(self, monkeypatch):
         monkeypatch.setattr(
-            "bedrock_bio.config.CREDENTIALS_URL",
-            "https://invalid.invalid/credentials.json",
+            type(config),
+            "credentials_url",
+            property(lambda self: "https://invalid.invalid/credentials.json"),
         )
-        with pytest.raises(ConnectionError, match="Unable to fetch credentials"):
+        with pytest.raises(ConnectionError, match="Unable to access credentials URL"):
             config.get_credentials()
 
     def test_connection_returns_duckdb_with_s3_secret(self):
@@ -138,18 +142,3 @@ class TestConfig:
         first = config.get_connection()
         second = config.get_connection()
         assert first is second
-
-    def test_reset_clears_cached_state(self):
-        config.get_catalog()
-        config.get_namespaces()
-        config.get_credentials()
-        config.get_connection()
-        assert config.catalog is not None
-        assert config.namespaces is not None
-        assert config.credentials is not None
-        assert config.conn is not None
-        config.reset()
-        assert config.catalog is None
-        assert config.namespaces is None
-        assert config.credentials is None
-        assert config.conn is None

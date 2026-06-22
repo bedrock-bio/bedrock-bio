@@ -19,9 +19,9 @@ def describe_table(name: str) -> dict:
     Raises
     ------
     ConnectionError
-        If the catalog cannot be accessed.
+        If the manifest cannot be accessed.
     ValueError
-        If the table is not found in the catalog.
+        If the table is not found in the manifest.
 
     Examples
     --------
@@ -31,15 +31,15 @@ def describe_table(name: str) -> dict:
     'ukb_ppp.pqtls'
 
     """
-    catalog = config.get_catalog()
+    manifest = config.get_manifest()
 
-    if name not in catalog:
+    if name not in manifest:
         raise ValueError(
-            f"Table '{name}' not found in catalog. "
+            f"Table '{name}' not found in manifest. "
             f"See list_tables() for available tables."
         )
 
-    entry = catalog[name]
+    entry = manifest[name]
     return {
         "name": name,
         "description": entry["description"],

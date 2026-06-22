@@ -4,7 +4,7 @@ skip_if_offline()
 test_that("errors on unknown table", {
   expect_error(
     describe_table("not_a_table"),
-    "not found in catalog"
+    "not found in manifest"
   )
 })
 

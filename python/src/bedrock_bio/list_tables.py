@@ -13,7 +13,7 @@ def list_tables() -> list[str]:
     Raises
     ------
     ConnectionError
-        If the catalog cannot be accessed.
+        If the manifest cannot be accessed.
 
     Examples
     --------
@@ -22,5 +22,5 @@ def list_tables() -> list[str]:
     ['ukb_ppp.pqtls', ...]
 
     """
-    catalog = config.get_catalog()
-    return list(catalog.keys())
+    manifest = config.get_manifest()
+    return list(manifest.keys())
