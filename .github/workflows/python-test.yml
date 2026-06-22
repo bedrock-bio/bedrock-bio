@@ -27,7 +27,7 @@ jobs:
           - {os: ubuntu-latest,  python: "3.11"}
     steps:
       - name: check-out-repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: install-uv
         uses: astral-sh/setup-uv@v7
         with:
