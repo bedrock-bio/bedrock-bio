@@ -1,0 +1,24 @@
+version: 2
+
+# Note: the r/ client (CRAN) has no Dependabot ecosystem support and is intentionally omitted.
+updates:
+  - package-ecosystem: uv
+    directory: "/python"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      uv-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
