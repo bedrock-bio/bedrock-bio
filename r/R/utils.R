@@ -1,6 +1,8 @@
 fetch_json <- function(url) {
   h <- curl::new_handle()
   curl::handle_setheaders(h, "User-Agent" = "bedrock-bio")
+  # Bound network stalls on the manifest/credentials fetches (seconds).
+  curl::handle_setopt(h, connecttimeout = 10, timeout = 10)
   con <- curl::curl(url, handle = h)
   on.exit(close(con))
   readLines(con, warn = FALSE)
@@ -10,20 +12,19 @@ column_fields <- c("name", "type", "description", "nullable", "allowed_values")
 
 #' @noRd
 load_manifest <- function() {
-  if (!is.null(pkg$catalog)) return(invisible(NULL))
+  if (!is.null(pkg$manifest)) return(invisible(NULL))
 
   raw <- tryCatch(
-    jsonlite::fromJSON(fetch_json(pkg$catalog_url), simplifyDataFrame = FALSE),
+    jsonlite::fromJSON(fetch_json(pkg$manifest_url), simplifyDataFrame = FALSE),
     error = function(e) {
       stop(
-        "Unable to access manifest URL '", pkg$catalog_url, "'. ",
-        "Check internet connection and try again.",
+        "Unable to access manifest URL '", pkg$manifest_url, "'",
         call. = FALSE
       )
     }
   )
 
-  catalog <- list()
+  manifest <- list()
   namespaces <- list()
   for (ns in names(raw$namespaces)) {
     ns_data <- raw$namespaces[[ns]]
@@ -31,7 +32,7 @@ load_manifest <- function() {
 
     for (i in seq_along(ns_data$tables)) {
       meta <- ns_data$tables[[i]]
-      catalog[[table_fqns[i]]] <- list(
+      manifest[[table_fqns[i]]] <- list(
         metadata_json = meta$metadata_json,
         partition_by = as.character(meta$partition_by),
         sort_by = as.character(meta$sort_by),
@@ -57,15 +58,15 @@ load_manifest <- function() {
       tables = table_fqns
     )
   }
-  pkg$catalog <- catalog
+  pkg$manifest <- manifest
   pkg$namespaces <- namespaces
   invisible(NULL)
 }
 
 #' @noRd
-get_catalog <- function() {
+get_manifest <- function() {
   load_manifest()
-  pkg$catalog
+  pkg$manifest
 }
 
 #' @noRd
@@ -84,24 +85,12 @@ get_credentials <- function() {
     jsonlite::fromJSON(fetch_json(pkg$credentials_url)),
     error = function(e) {
       stop(
-        "Unable to fetch credentials from '", pkg$credentials_url, "'. ",
-        "Check internet connection and try again.",
+        "Unable to access credentials URL '", pkg$credentials_url, "'",
         call. = FALSE
       )
     }
   )
   pkg$credentials
-}
-
-#' @noRd
-reset <- function() {
-  if (!is.null(pkg$conn)) {
-    try(DBI::dbDisconnect(pkg$conn, shutdown = TRUE), silent = TRUE)
-  }
-  pkg$catalog <- NULL
-  pkg$namespaces <- NULL
-  pkg$credentials <- NULL
-  pkg$conn <- NULL
 }
 
 #' @noRd

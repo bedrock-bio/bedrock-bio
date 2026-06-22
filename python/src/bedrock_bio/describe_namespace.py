@@ -20,7 +20,7 @@ def describe_namespace(name: str) -> dict:
     Raises
     ------
     ConnectionError
-        If the catalog cannot be accessed.
+        If the manifest cannot be accessed.
     ValueError
         If the namespace is not found.
 

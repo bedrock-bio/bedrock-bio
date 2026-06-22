@@ -7,6 +7,7 @@ from .describe_table import describe_table
 from .list_namespaces import list_namespaces
 from .list_tables import list_tables
 from .load_table import load_table
+from .reset import reset
 
 __all__ = [
     "describe_namespace",
@@ -14,4 +15,5 @@ __all__ = [
     "list_namespaces",
     "list_tables",
     "load_table",
+    "reset",
 ]

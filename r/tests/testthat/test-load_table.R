@@ -9,7 +9,7 @@ dbsnp <- function() {
 test_that("errors on unknown table", {
   expect_error(
     load_table("not_a_table"),
-    "not found in catalog"
+    "not found in manifest"
   )
 })
 

@@ -1,10 +1,10 @@
-# --- get_catalog ---
+# --- get_manifest ---
 
-test_that("get_catalog returns a named list of entry lists", {
+test_that("get_manifest returns a named list of entry lists", {
   skip_on_cran()
   skip_if_offline()
   bedrockbio:::reset()
-  result <- bedrockbio:::get_catalog()
+  result <- bedrockbio:::get_manifest()
   expect_type(result, "list")
   expect_true(length(result) > 0)
   for (entry in result) {
@@ -16,31 +16,31 @@ test_that("get_catalog returns a named list of entry lists", {
   }
 })
 
-test_that("get_catalog caches result", {
+test_that("get_manifest caches result", {
   skip_on_cran()
   skip_if_offline()
   bedrockbio:::reset()
-  first <- bedrockbio:::get_catalog()
-  second <- bedrockbio:::get_catalog()
+  first <- bedrockbio:::get_manifest()
+  second <- bedrockbio:::get_manifest()
   expect_identical(first, second)
 })
 
-test_that("get_catalog errors when URL is unreachable", {
+test_that("get_manifest errors when URL is unreachable", {
   bedrockbio:::reset()
   pkg <- bedrockbio:::pkg
-  original_url <- pkg$catalog_url
-  pkg$catalog_url <- "https://invalid.invalid/manifest.json"
+  original_url <- pkg$manifest_url
+  pkg$manifest_url <- "https://invalid.invalid/manifest.json"
   on.exit({
-    pkg$catalog_url <- original_url
+    pkg$manifest_url <- original_url
     bedrockbio:::reset()
   })
   expect_error(
-    suppressWarnings(bedrockbio:::get_catalog()),
+    suppressWarnings(bedrockbio:::get_manifest()),
     "Unable to access manifest URL"
   )
 })
 
-test_that("get_catalog preserves whitelisted column keys and strips others", {
+test_that("get_manifest preserves whitelisted column keys and strips others", {
   bedrockbio:::reset()
   fixture <- tempfile(fileext = ".json")
   jsonlite::write_json(
@@ -82,15 +82,15 @@ test_that("get_catalog preserves whitelisted column keys and strips others", {
   )
 
   pkg <- bedrockbio:::pkg
-  original_url <- pkg$catalog_url
-  pkg$catalog_url <- paste0("file://", fixture)
+  original_url <- pkg$manifest_url
+  pkg$manifest_url <- paste0("file://", fixture)
   on.exit({
-    pkg$catalog_url <- original_url
+    pkg$manifest_url <- original_url
     unlink(fixture)
     bedrockbio:::reset()
   })
 
-  result <- bedrockbio:::get_catalog()
+  result <- bedrockbio:::get_manifest()
   cols <- result[["test_ns.test_tbl"]]$columns
 
   c1 <- cols[[1]]
@@ -166,7 +166,7 @@ test_that("get_credentials errors when URL is unreachable", {
   })
   expect_error(
     suppressWarnings(bedrockbio:::get_credentials()),
-    "Unable to fetch credentials"
+    "Unable to access credentials URL"
   )
 })
 
@@ -191,23 +191,4 @@ test_that("get_connection caches", {
   first <- bedrockbio:::get_connection()
   second <- bedrockbio:::get_connection()
   expect_identical(first, second)
-})
-
-test_that("reset clears cached catalog, namespaces, credentials, and conn", {
-  skip_on_cran()
-  skip_if_offline()
-  bedrockbio:::get_catalog()
-  bedrockbio:::get_namespaces()
-  bedrockbio:::get_credentials()
-  bedrockbio:::get_connection()
-  pkg <- bedrockbio:::pkg
-  expect_false(is.null(pkg$catalog))
-  expect_false(is.null(pkg$namespaces))
-  expect_false(is.null(pkg$credentials))
-  expect_false(is.null(pkg$conn))
-  bedrockbio:::reset()
-  expect_null(pkg$catalog)
-  expect_null(pkg$namespaces)
-  expect_null(pkg$credentials)
-  expect_null(pkg$conn)
 })

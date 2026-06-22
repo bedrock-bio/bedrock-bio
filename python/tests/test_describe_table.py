@@ -5,7 +5,7 @@ from bedrock_bio.describe_table import describe_table
 
 class TestDescribeTable:
     def test_no_table(self):
-        with pytest.raises(ValueError, match="not found in catalog"):
+        with pytest.raises(ValueError, match="not found in manifest"):
             describe_table("not_a_table")
 
     def test_returns_expected_keys(self):
