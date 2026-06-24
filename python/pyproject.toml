@@ -6,10 +6,29 @@ readme = "README.md"
 authors = [
     { name = "Liam Abbott", email = "liam@bedrock.bio" }
 ]
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE.md"]
+keywords = ["bioinformatics", "genomics", "datasets", "duckdb", "iceberg"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 requires-python = ">=3.11"
 dependencies = [
     "duckdb>=1.5.0",
 ]
+
+[project.urls]
+Homepage = "https://bedrock.bio"
+Repository = "https://github.com/bedrock-bio/bedrock-bio"
+Issues = "https://github.com/bedrock-bio/bedrock-bio/issues"
 
 [build-system]
 requires = ["uv_build>=0.9.8,<0.10.0"]

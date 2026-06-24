@@ -49,5 +49,9 @@ def load_table(name: str) -> duckdb.DuckDBPyRelation:
 
     entry = manifest[name]
     conn = config.get_connection()
+    # The path is interpolated as a single-quoted literal rather than bound as a
+    # parameter: a bind parameter in iceberg_scan() defeats DuckDB's Iceberg
+    # partition pruning and predicate pushdown. The path is catalog-derived and
+    # trusted; escaping embedded quotes is sufficient.
     escaped = entry["metadata_json"].replace("'", "''")
     return conn.sql(f"SELECT * FROM iceberg_scan('{escaped}')")

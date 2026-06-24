@@ -10,6 +10,8 @@ fetch_json <- function(url) {
 
 column_fields <- c("name", "type", "description", "nullable", "allowed_values")
 
+default_if_null <- function(x, default) if (is.null(x)) default else x
+
 #' @noRd
 load_manifest <- function() {
   if (!is.null(pkg$manifest)) return(invisible(NULL))
@@ -36,24 +38,24 @@ load_manifest <- function() {
         metadata_json = meta$metadata_json,
         partition_by = as.character(meta$partition_by),
         sort_by = as.character(meta$sort_by),
-        description = meta$description,
+        description = default_if_null(meta$description, ""),
         citation = ns_data$citation,
-        source_url = ns_data$source_url,
-        license = ns_data$license,
+        source_url = default_if_null(ns_data$source_url, ""),
+        license = default_if_null(ns_data$license, ""),
         columns = lapply(
           meta$columns,
-          function(col) col[intersect(names(col), column_fields)]
+          function(col) col[intersect(column_fields, names(col))]
         )
       )
     }
 
     namespaces[[ns]] <- list(
       id = ns,
-      name = ns_data$name,
-      description = ns_data$description,
-      source_url = ns_data$source_url,
-      license = ns_data$license,
-      instructions = ns_data$instructions,
+      name = default_if_null(ns_data$name, ""),
+      description = default_if_null(ns_data$description, ""),
+      source_url = default_if_null(ns_data$source_url, ""),
+      license = default_if_null(ns_data$license, ""),
+      instructions = default_if_null(ns_data$instructions, ""),
       citation = ns_data$citation,
       tables = table_fqns
     )

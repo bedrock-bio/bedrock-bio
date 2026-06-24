@@ -42,6 +42,11 @@ Or install the current development version from
 pak::pak("bedrock-bio/bedrock-bio/r")
 ```
 
+The R package supports macOS and Linux only: the DuckDB `iceberg` extension
+has no MinGW build, so it cannot load on R for Windows. Windows users can use
+the [Python client](https://pypi.org/project/bedrock-bio/) instead, which works
+on all platforms.
+
 ## Examples
 
 Load the package (and `dplyr` for downstream data frame manipulation):
