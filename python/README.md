@@ -67,7 +67,7 @@ df = (
     bb.load_table('ukb_ppp.pqtls')
       .filter("ancestry = 'EUR' AND protein_id = 'A0FGR8' AND panel = 'Inflammation'")
       .select('chromosome, position, effect_allele, other_allele, beta, neg_log_10_p_value')
-      .fetchdf()
+      .df()
 )
 ```
 

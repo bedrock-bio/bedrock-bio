@@ -10,10 +10,11 @@ reset()
 Invisibly \code{NULL}.
 }
 \description{
-Clears the cached manifest, namespaces, credentials, and database connection.
-The next call to a query function re-fetches the manifest and credentials and
-rebuilds the connection. Useful when credentials have been rotated during a
-long-running session.
+Clears the cached manifest, namespaces, credentials, and database
+connection, and re-resolves the data host from the \code{BB_ENV} environment
+variable. The next call to a query function re-fetches the manifest and
+credentials and rebuilds the connection. Useful when credentials have been
+rotated, or \code{BB_ENV} has changed, during a long-running session.
 }
 \examples{
 \dontrun{

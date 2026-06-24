@@ -4,6 +4,9 @@ import os
 import urllib.request
 from dataclasses import dataclass
 
+# Column keys preserved from the manifest, in this order.
+COLUMN_FIELDS = ("name", "type", "description", "nullable", "allowed_values")
+
 
 @dataclass
 class Config:
@@ -27,14 +30,6 @@ class Config:
     def credentials_url(self) -> str:
         return f"{self.base_url}/credentials.json"
 
-    @property
-    def timeout(self) -> int:
-        return 10
-
-    @property
-    def table_fields(self) -> tuple[str]:
-        return ("name", "type", "description", "nullable", "allowed_values")
-
     def _load_manifest(self) -> None:
         if self.manifest is not None:
             return
@@ -43,7 +38,8 @@ class Config:
             request = urllib.request.Request(
                 self.manifest_url, headers={"User-Agent": "bedrock-bio"}
             )
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            # Bound network stalls on the manifest/credentials fetches (seconds).
+            with urllib.request.urlopen(request, timeout=10) as response:
                 raw = json.loads(response.read())
 
         except Exception:
@@ -69,7 +65,7 @@ class Config:
                     "source_url": ns_data.get("source_url", ""),
                     "license": ns_data.get("license", ""),
                     "columns": [
-                        {tf: col[tf] for tf in self.table_fields if tf in col}
+                        {tf: col[tf] for tf in COLUMN_FIELDS if tf in col}
                         for col in metadata.get("columns", [])
                     ],
                 }
@@ -101,7 +97,7 @@ class Config:
             request = urllib.request.Request(
                 self.credentials_url, headers={"User-Agent": "bedrock-bio"}
             )
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with urllib.request.urlopen(request, timeout=10) as response:
                 self.credentials = json.loads(response.read())
 
         except Exception:
