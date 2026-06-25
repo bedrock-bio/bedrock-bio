@@ -5,7 +5,27 @@ on:
     types: [published]
 
 jobs:
+  # Gate the release on the client working against the live prod data backend.
+  test-prod:
+    name: python-test-prod
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: check-out-repository
+        uses: actions/checkout@v5
+      - name: install-uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+          working-directory: python
+          enable-cache: true
+      - name: run-tests-against-prod
+        run: uv run pytest tests/
+
   publish-prod:
+    needs: test-prod
     runs-on: ubuntu-latest
     environment:
       name: pypi

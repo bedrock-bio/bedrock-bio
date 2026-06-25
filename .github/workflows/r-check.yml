@@ -17,6 +17,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      BB_ENV: dev
     strategy:
       fail-fast: false
       matrix:
@@ -44,3 +45,17 @@ jobs:
         uses: r-lib/actions/check-r-package@v2
         with:
           working-directory: r
+
+  # Stable check for branch protection: succeeds only if every matrix leg did.
+  r-check-gate:
+    name: r-check-gate
+    needs: check
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: verify-checks-passed
+        run: |
+          if [ "${{ needs.check.result }}" != "success" ]; then
+            echo "r-check matrix did not succeed: ${{ needs.check.result }}"
+            exit 1
+          fi

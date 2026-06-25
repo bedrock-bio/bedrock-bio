@@ -12,6 +12,8 @@ jobs:
   test:
     name: python-test-${{ matrix.config.os }}-${{ matrix.config.python }}
     runs-on: ${{ matrix.config.os }}
+    env:
+      BB_ENV: dev
     defaults:
       run:
         working-directory: python
@@ -36,3 +38,17 @@ jobs:
           enable-cache: true
       - name: run-tests
         run: uv run pytest tests/
+
+  # Stable check for branch protection: succeeds only if every matrix leg did.
+  python-test-gate:
+    name: python-test-gate
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: verify-tests-passed
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "python-test matrix did not succeed: ${{ needs.test.result }}"
+            exit 1
+          fi
