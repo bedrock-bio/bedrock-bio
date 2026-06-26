@@ -6,8 +6,8 @@ test_that("reset is exported", {
 test_that("reset clears cached state", {
   pkg <- bedrockbio:::pkg
   pkg$manifest <- list("ns.tbl" = list())
-  pkg$credentials <- list(R2_ACCESS_KEY_ID = "x")
+  pkg$namespaces <- list(ns = list())
   bedrockbio:::reset()
   expect_null(pkg$manifest)
-  expect_null(pkg$credentials)
+  expect_null(pkg$namespaces)
 })

@@ -127,61 +127,18 @@ test_that("get_namespaces returns a named list of namespace entries", {
   }
 })
 
-# --- get_credentials ---
-
-test_that("get_credentials returns expected keys", {
-  skip_on_cran()
-  skip_if_offline()
-  bedrockbio:::reset()
-  result <- bedrockbio:::get_credentials()
-  expected_names <- c(
-    "R2_ACCOUNT_ID",
-    "R2_ACCESS_KEY_ID",
-    "R2_SECRET_ACCESS_KEY"
-  )
-  expect_true(all(expected_names %in% names(result)))
-  for (nm in expected_names) {
-    expect_type(result[[nm]], "character")
-    expect_true(nzchar(result[[nm]]))
-  }
-})
-
-test_that("get_credentials caches result", {
-  skip_on_cran()
-  skip_if_offline()
-  bedrockbio:::reset()
-  first <- bedrockbio:::get_credentials()
-  second <- bedrockbio:::get_credentials()
-  expect_identical(first, second)
-})
-
-test_that("get_credentials errors when URL is unreachable", {
-  bedrockbio:::reset()
-  pkg <- bedrockbio:::pkg
-  original_url <- pkg$credentials_url
-  pkg$credentials_url <- "https://invalid.invalid/credentials.json"
-  on.exit({
-    pkg$credentials_url <- original_url
-    bedrockbio:::reset()
-  })
-  expect_error(
-    suppressWarnings(bedrockbio:::get_credentials()),
-    "Unable to access credentials URL"
-  )
-})
-
 # --- get_connection ---
 
-test_that("get_connection returns DuckDB with S3 secret", {
+test_that("get_connection uses anonymous vhost settings", {
   skip_on_cran()
   skip_if_offline()
   bedrockbio:::reset()
   conn <- bedrockbio:::get_connection()
   expect_s4_class(conn, "duckdb_connection")
   secrets <- DBI::dbGetQuery(conn, "FROM duckdb_secrets()")
-  expect_equal(nrow(secrets), 1L)
-  expect_equal(secrets$type, "s3")
-  expect_true(grepl("r2.cloudflarestorage.com", secrets$secret_string))
+  expect_equal(nrow(secrets), 0L)
+  sql <- "SELECT current_setting('s3_endpoint') AS v"
+  expect_equal(DBI::dbGetQuery(conn, sql)$v, "bedrock.bio")
 })
 
 test_that("get_connection caches", {

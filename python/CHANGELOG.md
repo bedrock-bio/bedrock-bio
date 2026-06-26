@@ -1,5 +1,11 @@
 # Changelog
 
+## bedrock-bio 1.5.0
+
+* Reads are now anonymous over HTTPS — the client no longer fetches
+  `credentials.json` or creates an R2 S3 secret. No API keys are required.
+  Partition pruning and predicate pushdown are unchanged.
+
 ## bedrock-bio 1.4.1
 
 * `reset()`: now exported — clears the cached manifest, credentials, and

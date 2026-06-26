@@ -9,7 +9,7 @@ def test_reset_is_exported():
 
 def test_reset_clears_state():
     config.manifest = {"ns.tbl": {}}
-    config.credentials = {"R2_ACCESS_KEY_ID": "x"}
+    config.namespaces = {"ns": {}}
     bb.reset()
     assert config.manifest is None
-    assert config.credentials is None
+    assert config.namespaces is None

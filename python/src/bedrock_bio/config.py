@@ -12,7 +12,6 @@ COLUMN_FIELDS = ("name", "type", "description", "nullable", "allowed_values")
 class Config:
     manifest: dict[str, dict] | None = None
     namespaces: dict[str, dict] | None = None
-    credentials: dict[str, str] | None = None
     conn: duckdb.DuckDBPyConnection | None = None
 
     @property
@@ -26,10 +25,6 @@ class Config:
     def manifest_url(self) -> str:
         return f"{self.base_url}/manifest.json"
 
-    @property
-    def credentials_url(self) -> str:
-        return f"{self.base_url}/credentials.json"
-
     def _load_manifest(self) -> None:
         if self.manifest is not None:
             return
@@ -38,7 +33,7 @@ class Config:
             request = urllib.request.Request(
                 self.manifest_url, headers={"User-Agent": "bedrock-bio"}
             )
-            # Bound network stalls on the manifest/credentials fetches (seconds).
+            # Bound network stalls on the manifest fetch (seconds).
             with urllib.request.urlopen(request, timeout=10) as response:
                 raw = json.loads(response.read())
 
@@ -89,40 +84,21 @@ class Config:
         self._load_manifest()
         return self.namespaces
 
-    def get_credentials(self) -> dict[str, str]:
-        if self.credentials is not None:
-            return self.credentials
-
-        try:
-            request = urllib.request.Request(
-                self.credentials_url, headers={"User-Agent": "bedrock-bio"}
-            )
-            with urllib.request.urlopen(request, timeout=10) as response:
-                self.credentials = json.loads(response.read())
-
-        except Exception:
-            raise ConnectionError(
-                f"Unable to access credentials URL {self.credentials_url!r}"
-            )
-
-        return self.credentials
-
     def get_connection(self) -> duckdb.DuckDBPyConnection:
         if self.conn is not None:
             return self.conn
 
-        credentials = self.get_credentials()
         self.conn = duckdb.connect()
         self.conn.sql("INSTALL httpfs")
         self.conn.sql("INSTALL iceberg")
-        self.conn.execute(
-            "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
-            [
-                credentials["R2_ACCESS_KEY_ID"],
-                credentials["R2_SECRET_ACCESS_KEY"],
-                f"{credentials['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
-            ],
-        )
+        # Anonymous, cache-fronted reads over the public custom domain. Each
+        # table's metadata_json is s3://<bucket>/...; vhost resolution maps it to
+        # https://<bucket>.bedrock.bio/... — no credentials, no S3 API, no listing.
+        # The connection is private to this package, so global SET is safe here.
+        self.conn.sql("SET s3_endpoint='bedrock.bio'")
+        self.conn.sql("SET s3_url_style='vhost'")
+        self.conn.sql("SET s3_use_ssl=true")
+        self.conn.sql("SET s3_region='auto'")
         return self.conn
 
     def reset(self):
@@ -130,7 +106,6 @@ class Config:
             self.conn.close()
         self.manifest = None
         self.namespaces = None
-        self.credentials = None
         self.conn = None
 
 

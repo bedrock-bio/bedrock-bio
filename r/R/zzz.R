@@ -1,6 +1,6 @@
 pkg <- new.env(parent = emptyenv())
 
-# Resolve the data host from BB_ENV and cache the derived URLs. Called at load
+# Resolve the data host from BB_ENV and cache the derived URL. Called at load
 # and again on reset() so a mid-session BB_ENV change takes effect.
 set_host_urls <- function() {
   host <- if (identical(Sys.getenv("BB_ENV"), "dev")) {
@@ -9,7 +9,6 @@ set_host_urls <- function() {
     "https://data.bedrock.bio"
   }
   pkg$manifest_url <- paste0(host, "/manifest.json")
-  pkg$credentials_url <- paste0(host, "/credentials.json")
 }
 
 .onLoad <- function(libname, pkgname) {

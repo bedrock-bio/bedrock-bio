@@ -104,39 +104,15 @@ class TestConfig:
             assert isinstance(entry["tables"], list)
             assert all(fqn.startswith(f"{ns_id}.") for fqn in entry["tables"])
 
-    def test_credentials_returns_expected_keys(self):
-        result = config.get_credentials()
-        expected_keys = {
-            "R2_ACCOUNT_ID",
-            "R2_ACCESS_KEY_ID",
-            "R2_SECRET_ACCESS_KEY",
-        }
-        assert set(result.keys()) == expected_keys
-        for value in result.values():
-            assert isinstance(value, str)
-            assert len(value) > 0
-
-    def test_credentials_caches_result(self):
-        first = config.get_credentials()
-        second = config.get_credentials()
-        assert first is second
-
-    def test_credentials_errors_when_url_unreachable(self, monkeypatch):
-        monkeypatch.setattr(
-            type(config),
-            "credentials_url",
-            property(lambda self: "https://invalid.invalid/credentials.json"),
-        )
-        with pytest.raises(ConnectionError, match="Unable to access credentials URL"):
-            config.get_credentials()
-
-    def test_connection_returns_duckdb_with_s3_secret(self):
+    def test_connection_uses_anonymous_vhost(self):
         conn = config.get_connection()
         assert isinstance(conn, duckdb.DuckDBPyConnection)
-        rows = conn.sql("FROM duckdb_secrets()").fetchall()
-        assert len(rows) == 1
-        assert "s3" in str(rows[0])
-        assert "r2.cloudflarestorage.com" in rows[0][-1]
+        # No secret — reads are anonymous over the public custom domain.
+        assert conn.sql("FROM duckdb_secrets()").fetchall() == []
+        endpoint = conn.sql("SELECT current_setting('s3_endpoint')").fetchone()[0]
+        assert endpoint == "bedrock.bio"
+        url_style = conn.sql("SELECT current_setting('s3_url_style')").fetchone()[0]
+        assert url_style == "vhost"
 
     def test_connection_caches(self):
         first = config.get_connection()
