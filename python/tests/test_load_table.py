@@ -55,3 +55,11 @@ class TestLoadTable:
         # Projection pushed down: unselected columns are pruned from the scan.
         assert "ref_allele" not in plan
         assert "alt_allele" not in plan
+
+    def test_reads_unpartitioned_table(self):
+        # The other table shape: a single-file table with no partition columns
+        # (dbsnp.vcf above is hive-partitioned).
+        rel = load_table("ensembl.taxonomies").limit(3)
+        rows = rel.fetchall()
+        assert len(rows) == 3
+        assert len(rel.columns) > 0

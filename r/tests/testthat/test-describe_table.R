@@ -34,3 +34,11 @@ test_that("partitioned table returns expected partition and sort columns", {
   expect_equal(result$partition_by, c("assembly", "chromosome"))
   expect_equal(result$sort_by, "position")
 })
+
+test_that("unpartitioned table returns empty partition_by", {
+  # The other table shape: a single-file table with no partition columns
+  # (dbsnp.vcf above is hive-partitioned).
+  result <- describe_table("ensembl.taxonomies")
+  expect_equal(result$partition_by, character(0))
+  expect_true(length(result$sort_by) > 0)
+})

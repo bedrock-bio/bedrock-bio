@@ -57,3 +57,13 @@ test_that("filters and projection are pushed into the scan", {
   expect_false(grepl("ref_allele", plan_text))
   expect_false(grepl("alt_allele", plan_text))
 })
+
+test_that("reads an unpartitioned table", {
+  # The other table shape: a single-file table with no partition columns
+  # (dbsnp.vcf above is hive-partitioned).
+  df <- load_table("ensembl.taxonomies") |>
+    head(3) |>
+    dplyr::collect()
+  expect_equal(nrow(df), 3L)
+  expect_true(ncol(df) > 0)
+})

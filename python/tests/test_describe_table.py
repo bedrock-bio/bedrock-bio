@@ -30,3 +30,10 @@ class TestDescribeTable:
         result = describe_table("dbsnp.vcf")
         assert result["partition_by"] == ["assembly", "chromosome"]
         assert result["sort_by"] == ["position"]
+
+    def test_unpartitioned_table_returns_empty_partition_by(self):
+        # The other table shape: a single-file table with no partition columns
+        # (dbsnp.vcf above is hive-partitioned).
+        result = describe_table("ensembl.taxonomies")
+        assert result["partition_by"] == []
+        assert len(result["sort_by"]) > 0
