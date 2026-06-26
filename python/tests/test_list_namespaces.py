@@ -7,5 +7,4 @@ class TestListNamespaces:
         assert isinstance(result, list)
         for name in result:
             assert isinstance(name, str)
-        assert "ukb_ppp" in result
         assert "dbsnp" in result

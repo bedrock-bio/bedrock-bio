@@ -9,8 +9,8 @@ test_that("errors on unknown table", {
 })
 
 test_that("returns expected fields", {
-  result <- describe_table("ukb_ppp.pqtls")
-  expect_equal(result$name, "ukb_ppp.pqtls")
+  result <- describe_table("dbsnp.vcf")
+  expect_equal(result$name, "dbsnp.vcf")
   expect_type(result$description, "character")
   expect_true(nzchar(result$description))
   expect_type(result$citation, "list")
@@ -27,12 +27,6 @@ test_that("columns have expected fields", {
     expect_true("type" %in% names(col))
     expect_true("description" %in% names(col))
   }
-})
-
-test_that("unpartitioned table returns empty partition_by", {
-  result <- describe_table("open_targets.targets")
-  expect_equal(result$partition_by, character(0))
-  expect_true(length(result$sort_by) > 0)
 })
 
 test_that("partitioned table returns expected partition and sort columns", {

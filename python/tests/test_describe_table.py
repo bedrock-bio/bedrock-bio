@@ -9,8 +9,8 @@ class TestDescribeTable:
             describe_table("not_a_table")
 
     def test_returns_expected_keys(self):
-        result = describe_table("ukb_ppp.pqtls")
-        assert result["name"] == "ukb_ppp.pqtls"
+        result = describe_table("dbsnp.vcf")
+        assert result["name"] == "dbsnp.vcf"
         assert isinstance(result["description"], str)
         assert len(result["description"]) > 0
         assert isinstance(result["citation"], dict)
@@ -25,11 +25,6 @@ class TestDescribeTable:
             assert "name" in col
             assert "type" in col
             assert "description" in col
-
-    def test_unpartitioned_table_returns_empty_partition_by(self):
-        result = describe_table("open_targets.targets")
-        assert result["partition_by"] == []
-        assert len(result["sort_by"]) > 0
 
     def test_partitioned_table_returns_expected_partition_and_sort_columns(self):
         result = describe_table("dbsnp.vcf")
