@@ -35,11 +35,11 @@ install.packages("bedrockbio")
 ```
 
 Or install the current development version from
-[GitHub](https://github.com/bedrock-bio/bedrock-bio):
+[GitHub](https://github.com/bedrock-bio/bedrock-bio-client):
 
 ```r
 # install.packages("pak")
-pak::pak("bedrock-bio/bedrock-bio/r")
+pak::pak("bedrock-bio/bedrock-bio-client/r")
 ```
 
 The R package supports macOS and Linux only: the DuckDB `iceberg` extension
@@ -92,4 +92,4 @@ df <- load_table("ukb_ppp.pqtls") |>
 ## Dataset Requests
 
 To request the addition of a new table to the library, open an
-[issue](https://github.com/bedrock-bio/bedrock-bio/issues).
+[issue](https://github.com/bedrock-bio/bedrock-bio-client/issues).

@@ -27,8 +27,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://bedrock.bio"
-Repository = "https://github.com/bedrock-bio/bedrock-bio"
-Issues = "https://github.com/bedrock-bio/bedrock-bio/issues"
+Repository = "https://github.com/bedrock-bio/bedrock-bio-client"
+Issues = "https://github.com/bedrock-bio/bedrock-bio-client/issues"
 
 [build-system]
 requires = ["uv_build>=0.9.8,<0.12.0"]
