@@ -1,6 +1,5 @@
 .DS_Store
 r/.Rhistory
-credentials*.json
 
 # R CMD check leftovers
 *.Rcheck/
