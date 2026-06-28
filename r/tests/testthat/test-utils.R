@@ -1,5 +1,3 @@
-# --- get_manifest ---
-
 test_that("get_manifest returns a named list of v2 entry lists", {
   local_v2_manifest()
   result <- bedrockbio:::get_manifest()
@@ -22,13 +20,13 @@ test_that("get_manifest caches result", {
 })
 
 test_that("get_manifest errors when URL is unreachable", {
-  bedrockbio:::reset()
+  clear_state()
   pkg <- bedrockbio:::pkg
   original_url <- pkg$manifest_url
   pkg$manifest_url <- "https://invalid.invalid/manifest.json"
   on.exit({
     pkg$manifest_url <- original_url
-    bedrockbio:::reset()
+    clear_state()
   })
   expect_error(
     suppressWarnings(bedrockbio:::get_manifest()),
@@ -37,7 +35,7 @@ test_that("get_manifest errors when URL is unreachable", {
 })
 
 test_that("get_manifest rejects an unsupported manifest version", {
-  bedrockbio:::reset()
+  clear_state()
   fixture <- tempfile(fileext = ".json")
   jsonlite::write_json(
     list(version = 1L, namespaces = list()),
@@ -50,7 +48,7 @@ test_that("get_manifest rejects an unsupported manifest version", {
   on.exit({
     pkg$manifest_url <- original_url
     unlink(fixture)
-    bedrockbio:::reset()
+    clear_state()
   })
   expect_error(
     bedrockbio:::get_manifest(),
@@ -72,7 +70,6 @@ test_that("get_manifest lifts the v2 table block", {
   )
   expect_equal(entry$partitions$chromosome$default, "")
 
-  # Columns are lifted wholesale; v2 carries no allowed_values.
   c1 <- entry$columns[[1]]
   expect_equal(c1$name, "disease_id")
   expect_equal(c1$type, "TEXT")
@@ -83,15 +80,12 @@ test_that("get_manifest lifts the v2 table block", {
   }
 })
 
-# --- get_namespaces ---
-
 test_that("get_namespaces lifts the v2 namespace block", {
   local_v2_manifest()
   result <- bedrockbio:::get_namespaces()
   ns <- result[["test_ns"]]
   expect_equal(ns$name, "Test Namespace")
   expect_equal(ns$license, "CC0 1.0")
-  # citation is a pre-formatted string in v2, not a structured object.
   expect_type(ns$citation, "character")
   expect_equal(ns$citation, "Some Author. Some Journal 2025. doi:10.0/test")
   expect_equal(ns$context, "What this data source is and how to use it.")
@@ -114,12 +108,10 @@ test_that("get_namespaces returns a named list of namespace entries", {
   }
 })
 
-# --- get_connection ---
-
 test_that("get_connection uses anonymous vhost settings", {
   skip_on_cran()
   skip_if_offline()
-  bedrockbio:::reset()
+  clear_state()
   conn <- bedrockbio:::get_connection()
   expect_s4_class(conn, "duckdb_connection")
   secrets <- DBI::dbGetQuery(conn, "FROM duckdb_secrets()")
@@ -131,7 +123,7 @@ test_that("get_connection uses anonymous vhost settings", {
 test_that("get_connection caches", {
   skip_on_cran()
   skip_if_offline()
-  bedrockbio:::reset()
+  clear_state()
   first <- bedrockbio:::get_connection()
   second <- bedrockbio:::get_connection()
   expect_identical(first, second)

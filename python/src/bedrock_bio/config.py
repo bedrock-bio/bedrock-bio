@@ -4,8 +4,6 @@ import os
 import urllib.request
 from dataclasses import dataclass
 
-# The manifest schema version this client understands. The client hard-gates on
-# this so a stale v1 manifest fails loudly rather than mis-parsing silently.
 MANIFEST_VERSION = 2
 
 
@@ -19,8 +17,7 @@ class Config:
     def base_url(self) -> str:
         if os.environ.get("BB_ENV") == "dev":
             return "https://datasets-dev.bedrock.bio"
-        else:
-            return "https://datasets.bedrock.bio"
+        return "https://datasets.bedrock.bio"
 
     @property
     def manifest_url(self) -> str:
@@ -34,7 +31,6 @@ class Config:
             request = urllib.request.Request(
                 self.manifest_url, headers={"User-Agent": "bedrock-bio"}
             )
-            # Bound network stalls on the manifest fetch (seconds).
             with urllib.request.urlopen(request, timeout=10) as response:
                 raw = json.loads(response.read())
 
@@ -60,8 +56,6 @@ class Config:
                 fqn = f"{ns}.{table_name}"
                 table_fqns.append(fqn)
 
-                # `columns` is lifted wholesale (no field cherry-pick); the LLM
-                # consumes it as-is to write correct SQL.
                 self.manifest[fqn] = {
                     "iceberg_json": table["iceberg_json"],
                     "partitions": table.get("partitions", {}),
@@ -92,22 +86,11 @@ class Config:
         self.conn = duckdb.connect()
         self.conn.sql("INSTALL httpfs")
         self.conn.sql("INSTALL iceberg")
-        # Anonymous, cache-fronted reads over the public custom domain. Each
-        # table's metadata_json is s3://<bucket>/...; vhost resolution maps it to
-        # https://<bucket>.bedrock.bio/... — no credentials, no S3 API, no listing.
-        # The connection is private to this package, so global SET is safe here.
         self.conn.sql("SET s3_endpoint='bedrock.bio'")
         self.conn.sql("SET s3_url_style='vhost'")
         self.conn.sql("SET s3_use_ssl=true")
         self.conn.sql("SET s3_region='auto'")
         return self.conn
-
-    def reset(self):
-        if self.conn is not None:
-            self.conn.close()
-        self.manifest = None
-        self.namespaces = None
-        self.conn = None
 
 
 config = Config()

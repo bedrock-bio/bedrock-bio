@@ -1,6 +1,6 @@
-#' List available namespaces (data sources) in the Bedrock Bio library
+#' List available namespaces (data sources)
 #'
-#' @returns A character vector of namespace identifiers
+#' @returns A character vector of namespace identifiers.
 #'
 #' @examples
 #' \dontrun{
@@ -10,6 +10,5 @@
 #'
 #' @export
 list_namespaces <- function() {
-  namespaces <- get_namespaces()
-  names(namespaces)
+  names(get_namespaces())
 }

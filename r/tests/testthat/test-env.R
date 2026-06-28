@@ -24,17 +24,3 @@ test_that("BB_ENV=dev uses dev host", {
     "https://datasets-dev.bedrock.bio/manifest.json"
   )
 })
-
-test_that("reset re-resolves host from BB_ENV", {
-  old <- Sys.getenv("BB_ENV", unset = NA)
-  on.exit({
-    if (is.na(old)) Sys.unsetenv("BB_ENV") else Sys.setenv(BB_ENV = old)
-    bedrockbio:::reset()
-  })
-  Sys.setenv(BB_ENV = "dev")
-  bedrockbio:::reset()
-  expect_equal(
-    bedrockbio:::pkg$manifest_url,
-    "https://datasets-dev.bedrock.bio/manifest.json"
-  )
-})

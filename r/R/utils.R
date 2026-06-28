@@ -1,15 +1,12 @@
 fetch_json <- function(url) {
   h <- curl::new_handle()
   curl::handle_setheaders(h, "User-Agent" = "bedrock-bio")
-  # Bound network stalls on the manifest fetch (seconds).
   curl::handle_setopt(h, connecttimeout = 10, timeout = 10)
   con <- curl::curl(url, handle = h)
   on.exit(close(con))
   readLines(con, warn = FALSE)
 }
 
-# The manifest schema version this client understands. The client hard-gates on
-# this so a stale v1 manifest fails loudly rather than mis-parsing silently.
 manifest_version <- 2L
 
 default_if_null <- function(x, default) if (is.null(x)) default else x
@@ -46,8 +43,6 @@ load_manifest <- function() {
 
     for (i in seq_along(ns_data$tables)) {
       tbl <- ns_data$tables[[i]]
-      # `columns` is lifted wholesale (no field cherry-pick); the LLM consumes
-      # it as-is to write correct SQL.
       manifest[[table_fqns[i]]] <- list(
         iceberg_json = tbl$iceberg_json,
         partitions = default_if_null(tbl$partitions, list()),
@@ -90,9 +85,6 @@ get_connection <- function() {
   pkg$conn <- DBI::dbConnect(duckdb::duckdb())
   DBI::dbExecute(pkg$conn, "INSTALL httpfs")
   DBI::dbExecute(pkg$conn, "INSTALL iceberg")
-  # Anonymous, cache-fronted reads over the public custom domain. metadata_json
-  # is s3://<bucket>/...; vhost maps it to https://<bucket>.bedrock.bio/... —
-  # no credentials, no S3 API. The connection is private to this package.
   DBI::dbExecute(pkg$conn, "SET s3_endpoint='bedrock.bio'")
   DBI::dbExecute(pkg$conn, "SET s3_url_style='vhost'")
   DBI::dbExecute(pkg$conn, "SET s3_use_ssl=true")

@@ -7,12 +7,11 @@
 load_table(name)
 }
 \arguments{
-\item{name}{Table identifier (e.g., "ukb_ppp.pqtls")}
+\item{name}{Table identifier.}
 }
 \value{
-A lazy \code{tbl} backed by DuckDB, compatible with dplyr verbs.
-Use \code{describe_table()} to see partition columns and their allowed
-values; filter on partition columns for fastest reads.
+A lazy \code{tbl} backed by DuckDB, compatible with dplyr verbs. Filter
+on partition columns (see \code{describe_table()}) for fastest reads.
 }
 \description{
 Lazily query a table
@@ -22,7 +21,7 @@ Lazily query a table
 library(bedrockbio)
 library(dplyr)
 
-df <- load_table("dbsnp.vcf") |>
+load_table("dbsnp.vcf") |>
   filter(assembly == "GRCh38", chromosome == "22") |>
   select(rsid, position, ref_allele, alt_allele) |>
   head(5) |>
