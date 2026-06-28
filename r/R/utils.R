@@ -28,7 +28,8 @@ load_manifest <- function() {
     }
   )
 
-  if (!identical(as.integer(default_if_null(raw$version, NA)), manifest_version)) {
+  raw_version <- as.integer(default_if_null(raw$version, NA))
+  if (!identical(raw_version, manifest_version)) {
     stop(
       "Unsupported manifest version '", default_if_null(raw$version, "NULL"),
       "' at '", pkg$manifest_url, "'; this client requires version ",

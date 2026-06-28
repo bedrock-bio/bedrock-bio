@@ -19,7 +19,10 @@ test_that("BB_ENV=dev uses dev host", {
   Sys.setenv(BB_ENV = "dev")
   bedrockbio:::.onLoad(NULL, NULL)
   pkg <- bedrockbio:::pkg
-  expect_equal(pkg$manifest_url, "https://datasets-dev.bedrock.bio/manifest.json")
+  expect_equal(
+    pkg$manifest_url,
+    "https://datasets-dev.bedrock.bio/manifest.json"
+  )
 })
 
 test_that("reset re-resolves host from BB_ENV", {
