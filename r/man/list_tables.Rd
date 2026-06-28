@@ -4,10 +4,15 @@
 \alias{list_tables}
 \title{List available tables in the Bedrock Bio library}
 \usage{
-list_tables()
+list_tables(namespace = NULL)
+}
+\arguments{
+\item{namespace}{Optional namespace identifier (e.g., "ukb_ppp"). If given,
+only tables in that namespace are returned; if omitted, all tables across
+every namespace are returned.}
 }
 \value{
-A character vector of table identifiers
+A character vector of fully-qualified table identifiers
 }
 \description{
 List available tables in the Bedrock Bio library
@@ -16,6 +21,7 @@ List available tables in the Bedrock Bio library
 \dontrun{
 library(bedrockbio)
 list_tables()
+list_tables("ukb_ppp")
 }
 
 }

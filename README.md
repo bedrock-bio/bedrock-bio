@@ -26,4 +26,4 @@ guidance on choosing an access method.
 ## Dataset Requests
 
 To request the addition of a new dataset to the library, open an
-[issue](https://github.com/bedrock-bio/bedrock-bio/issues).
+[issue](https://github.com/bedrock-bio/bedrock-bio-client/issues).
