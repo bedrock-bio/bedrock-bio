@@ -1,7 +1,5 @@
 pkg <- new.env(parent = emptyenv())
 
-# Resolve the data host from BB_ENV and cache the derived URL. Called at load
-# and again on reset() so a mid-session BB_ENV change takes effect.
 set_host_urls <- function() {
   host <- if (identical(Sys.getenv("BB_ENV"), "dev")) {
     "https://datasets-dev.bedrock.bio"

@@ -7,13 +7,12 @@
 describe_namespace(name)
 }
 \arguments{
-\item{name}{Namespace identifier (e.g., "ukb_ppp")}
+\item{name}{Namespace identifier.}
 }
 \value{
-A named list with \code{name}, \code{citation} (a ready-to-cite string),
-\code{license}, \code{context} (prose: what the data source is, where it's from, how
-to use it), and \code{tables} (character vector of fully-qualified table
-identifiers). Use \code{describe_table()} for per-table details.
+A named list with \code{name}, \code{citation}, \code{license}, \code{context}, and
+\code{tables} (fully-qualified table identifiers). Use \code{describe_table()} for
+per-table details.
 }
 \description{
 Describe a namespace: its name, citation, license, context, and tables
@@ -21,8 +20,7 @@ Describe a namespace: its name, citation, license, context, and tables
 \examples{
 \dontrun{
 library(bedrockbio)
-info <- describe_namespace("ukb_ppp")
-info$tables
+describe_namespace("ukb_ppp")$tables
 }
 
 }

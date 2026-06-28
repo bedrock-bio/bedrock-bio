@@ -7,6 +7,5 @@ class TestListNamespaces:
         requires_live_v2_manifest()
         result = list_namespaces()
         assert isinstance(result, list)
-        for name in result:
-            assert isinstance(name, str)
+        assert all(isinstance(name, str) for name in result)
         assert "dbsnp" in result

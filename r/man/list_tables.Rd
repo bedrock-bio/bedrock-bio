@@ -2,25 +2,23 @@
 % Please edit documentation in R/list_tables.R
 \name{list_tables}
 \alias{list_tables}
-\title{List available tables in the Bedrock Bio library}
+\title{List available tables, optionally filtered to one namespace}
 \usage{
 list_tables(namespace = NULL)
 }
 \arguments{
-\item{namespace}{Optional namespace identifier (e.g., "ukb_ppp"). If given,
-only tables in that namespace are returned; if omitted, all tables across
-every namespace are returned.}
+\item{namespace}{If given, return only that namespace's tables; otherwise
+all tables.}
 }
 \value{
-A character vector of fully-qualified table identifiers
+A character vector of fully-qualified table identifiers.
 }
 \description{
-List available tables in the Bedrock Bio library
+List available tables, optionally filtered to one namespace
 }
 \examples{
 \dontrun{
 library(bedrockbio)
-list_tables()
 list_tables("ukb_ppp")
 }
 

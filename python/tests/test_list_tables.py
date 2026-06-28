@@ -1,59 +1,20 @@
-import json
-
 import pytest
 
-from bedrock_bio.config import config
 from bedrock_bio.list_tables import list_tables
-from conftest import requires_live_v2_manifest
+from conftest import local_manifest, requires_live_v2_manifest
 
-
-def _local_manifest(monkeypatch, tmp_path):
-    """Point the config at a hand-built two-namespace v2 manifest on disk."""
-    manifest = {
-        "version": 2,
-        "published_at": "2026-06-27T00:00:00Z",
-        "namespaces": {
-            "ns_a": {
-                "name": "Namespace A",
-                "license": "CC0 1.0",
-                "citation": "Author. Journal 2025. doi:10.0/a",
-                "context": "What ns_a is.",
-                "tables": {
-                    "tbl_one": {
-                        "partitions": {},
-                        "iceberg_json": "s3://test/a1.json",
-                        "columns": [],
-                        "context": "",
-                    },
-                    "tbl_two": {
-                        "partitions": {},
-                        "iceberg_json": "s3://test/a2.json",
-                        "columns": [],
-                        "context": "",
-                    },
-                },
-            },
-            "ns_b": {
-                "name": "Namespace B",
-                "license": "CC0 1.0",
-                "citation": "Author. Journal 2025. doi:10.0/b",
-                "context": "What ns_b is.",
-                "tables": {
-                    "tbl_three": {
-                        "partitions": {},
-                        "iceberg_json": "s3://test/b1.json",
-                        "columns": [],
-                        "context": "",
-                    },
-                },
-            },
+TWO_NS_MANIFEST = {
+    "version": 2,
+    "namespaces": {
+        "ns_a": {
+            "tables": {
+                "tbl_one": {"iceberg_json": "s3://test/a1.json"},
+                "tbl_two": {"iceberg_json": "s3://test/a2.json"},
+            }
         },
-    }
-    fixture = tmp_path / "manifest.json"
-    fixture.write_text(json.dumps(manifest))
-    monkeypatch.setattr(
-        type(config), "manifest_url", property(lambda self: f"file://{fixture}")
-    )
+        "ns_b": {"tables": {"tbl_three": {"iceberg_json": "s3://test/b1.json"}}},
+    },
+}
 
 
 class TestListTables:
@@ -61,21 +22,18 @@ class TestListTables:
         requires_live_v2_manifest()
         result = list_tables()
         assert isinstance(result, list)
-        for name in result:
-            assert isinstance(name, str)
+        assert all(isinstance(name, str) for name in result)
         assert "dbsnp.vcf" in result
 
     def test_no_namespace_returns_all_tables(self, monkeypatch, tmp_path):
-        _local_manifest(monkeypatch, tmp_path)
-        result = list_tables()
-        assert set(result) == {"ns_a.tbl_one", "ns_a.tbl_two", "ns_b.tbl_three"}
+        local_manifest(TWO_NS_MANIFEST, monkeypatch, tmp_path)
+        assert set(list_tables()) == {"ns_a.tbl_one", "ns_a.tbl_two", "ns_b.tbl_three"}
 
     def test_namespace_filters_to_that_namespace(self, monkeypatch, tmp_path):
-        _local_manifest(monkeypatch, tmp_path)
-        result = list_tables("ns_a")
-        assert result == ["ns_a.tbl_one", "ns_a.tbl_two"]
+        local_manifest(TWO_NS_MANIFEST, monkeypatch, tmp_path)
+        assert list_tables("ns_a") == ["ns_a.tbl_one", "ns_a.tbl_two"]
 
     def test_unknown_namespace_raises(self, monkeypatch, tmp_path):
-        _local_manifest(monkeypatch, tmp_path)
+        local_manifest(TWO_NS_MANIFEST, monkeypatch, tmp_path)
         with pytest.raises(ValueError, match="not found"):
             list_tables("not_a_namespace")

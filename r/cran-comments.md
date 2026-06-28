@@ -2,15 +2,17 @@
 
 0 errors | 0 warnings | 0 notes
 
-* This release exports `reset()` for clearing cached state after credential
-  rotation, and adds `BB_ENV=dev` support for pointing the client at the
-  development data host. See `NEWS.md` for details.
+* This release switches to anonymous HTTPS reads (no API keys or R2 secret)
+  and adopts manifest v2 (breaking). See `NEWS.md` for details.
 * OS_type: unix — the DuckDB iceberg extension is not available for
   Windows (R on Windows uses MinGW, and the iceberg extension has no
   MinGW build). See https://github.com/duckdb/duckdb-iceberg for
   upstream status.
 * Examples are wrapped in \dontrun{} because they require network
   access that is not available on the CRAN build farm.
+* The spell check may flag "pushdown"; this is intended, as "predicate
+  pushdown" is the standard term for the query optimization the package
+  relies on.
 
 ## Test environments
 

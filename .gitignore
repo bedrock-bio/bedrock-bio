@@ -1,6 +1,5 @@
 .DS_Store
 r/.Rhistory
-credentials*.json
 
 # R CMD check leftovers
 *.Rcheck/
@@ -17,3 +16,7 @@ wheels/
 # Virtual environments
 .venv
 .Rproj.user
+
+# Local-only (not for the public repo)
+CLAUDE.md
+plans/

@@ -14,11 +14,12 @@ unwieldy tables.
 
 - `list_namespaces()`: returns a character vector of available namespace
   (data source) identifiers
-- `describe_namespace("<name>")`: returns metadata, citation, license,
-  instructions, and the tables for a namespace
-- `list_tables()`: returns a character vector of available table identifiers
-- `describe_table("<name>")`: returns metadata, citation, partition and sort
-  keys, and column definitions for a table
+- `describe_namespace("<name>")`: returns a namespace's name, citation,
+  license, context, and its tables
+- `list_tables(namespace)`: returns a character vector of table identifiers,
+  optionally filtered to one namespace
+- `describe_table("<name>")`: returns a table's context, column definitions,
+  and partition columns (with their allowed values)
 - `load_table("<name>")`: returns a lazily-evaluated data frame for a table
 
 `dplyr` verbs (`filter`, `select`) can be used on the data frame returned by

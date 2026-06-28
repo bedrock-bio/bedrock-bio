@@ -2,15 +2,15 @@
 % Please edit documentation in R/list_namespaces.R
 \name{list_namespaces}
 \alias{list_namespaces}
-\title{List available namespaces (data sources) in the Bedrock Bio library}
+\title{List available namespaces (data sources)}
 \usage{
 list_namespaces()
 }
 \value{
-A character vector of namespace identifiers
+A character vector of namespace identifiers.
 }
 \description{
-List available namespaces (data sources) in the Bedrock Bio library
+List available namespaces (data sources)
 }
 \examples{
 \dontrun{

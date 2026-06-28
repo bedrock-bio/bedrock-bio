@@ -1,5 +1,3 @@
-# A hand-built v2 manifest derived from docs/MANIFEST.md, used to unit-test the
-# parser without a live network fetch.
 v2_manifest <- function() {
   list(
     version = 2L,
@@ -42,12 +40,9 @@ v2_manifest <- function() {
   )
 }
 
-# Write the v2 fixture to a temp file and point the package's manifest_url at it
-# for the duration of the calling test. Clears the cached manifest directly
-# (rather than reset(), which would re-resolve manifest_url from BB_ENV).
-local_v2_manifest <- function(env = parent.frame()) {
+local_manifest <- function(manifest, env = parent.frame()) {
   fixture <- tempfile(fileext = ".json")
-  jsonlite::write_json(v2_manifest(), fixture, auto_unbox = TRUE)
+  jsonlite::write_json(manifest, fixture, auto_unbox = TRUE)
   pkg <- bedrockbio:::pkg
   original_url <- pkg$manifest_url
   pkg$manifest <- NULL
@@ -65,11 +60,23 @@ local_v2_manifest <- function(env = parent.frame()) {
   fixture
 }
 
-# Skip a test when the live manifest can't be fetched or isn't v2 yet. The v2
-# prod/dev manifest is published by a separate Dagster job (Gate 0); until that
-# runs, the live manifest is still v1 and the version gate raises.
+local_v2_manifest <- function(env = parent.frame()) {
+  local_manifest(v2_manifest(), env)
+}
+
+clear_state <- function() {
+  pkg <- bedrockbio:::pkg
+  if (!is.null(pkg$conn)) {
+    try(DBI::dbDisconnect(pkg$conn, shutdown = TRUE), silent = TRUE)
+  }
+  pkg$manifest <- NULL
+  pkg$namespaces <- NULL
+  pkg$conn <- NULL
+  bedrockbio:::set_host_urls()
+}
+
 skip_unless_live_v2 <- function() {
-  bedrockbio:::reset()
+  clear_state()
   ok <- tryCatch(
     {
       bedrockbio:::get_manifest()
