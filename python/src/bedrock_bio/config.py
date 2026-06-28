@@ -92,12 +92,5 @@ class Config:
         self.conn.sql("SET s3_region='auto'")
         return self.conn
 
-    def reset(self) -> None:
-        if self.conn is not None:
-            self.conn.close()
-        self.manifest = None
-        self.namespaces = None
-        self.conn = None
-
 
 config = Config()

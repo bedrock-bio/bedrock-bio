@@ -3,6 +3,8 @@
 * Reads are now anonymous over HTTPS — the client no longer fetches
   `credentials.json` or creates an R2 S3 secret. No API keys are required.
   Partition pruning and predicate pushdown are unchanged.
+* **Removed `reset()` (breaking).** It existed to clear cached credentials
+  after rotation; with credential-free reads it no longer serves a purpose.
 * **Manifest v2 (breaking).** The client now reads the v2 `manifest.json` and
   hard-gates on `version == 2`; older client releases reading v1 must upgrade.
   `describe_table()` now returns `context`, `columns`, and `partitions`

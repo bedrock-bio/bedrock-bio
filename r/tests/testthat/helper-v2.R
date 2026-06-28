@@ -64,8 +64,19 @@ local_v2_manifest <- function(env = parent.frame()) {
   local_manifest(v2_manifest(), env)
 }
 
+clear_state <- function() {
+  pkg <- bedrockbio:::pkg
+  if (!is.null(pkg$conn)) {
+    try(DBI::dbDisconnect(pkg$conn, shutdown = TRUE), silent = TRUE)
+  }
+  pkg$manifest <- NULL
+  pkg$namespaces <- NULL
+  pkg$conn <- NULL
+  bedrockbio:::set_host_urls()
+}
+
 skip_unless_live_v2 <- function() {
-  bedrockbio:::reset()
+  clear_state()
   ok <- tryCatch(
     {
       bedrockbio:::get_manifest()

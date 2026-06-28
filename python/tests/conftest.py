@@ -46,10 +46,13 @@ V2_MANIFEST = {
 
 
 @pytest.fixture(autouse=True)
-def reset():
-    config.reset()
+def clear_state():
     yield
-    config.reset()
+    if config.conn is not None:
+        config.conn.close()
+    config.manifest = None
+    config.namespaces = None
+    config.conn = None
 
 
 def local_manifest(manifest, monkeypatch, tmp_path):

@@ -20,13 +20,13 @@ test_that("get_manifest caches result", {
 })
 
 test_that("get_manifest errors when URL is unreachable", {
-  bedrockbio:::reset()
+  clear_state()
   pkg <- bedrockbio:::pkg
   original_url <- pkg$manifest_url
   pkg$manifest_url <- "https://invalid.invalid/manifest.json"
   on.exit({
     pkg$manifest_url <- original_url
-    bedrockbio:::reset()
+    clear_state()
   })
   expect_error(
     suppressWarnings(bedrockbio:::get_manifest()),
@@ -35,7 +35,7 @@ test_that("get_manifest errors when URL is unreachable", {
 })
 
 test_that("get_manifest rejects an unsupported manifest version", {
-  bedrockbio:::reset()
+  clear_state()
   fixture <- tempfile(fileext = ".json")
   jsonlite::write_json(
     list(version = 1L, namespaces = list()),
@@ -48,7 +48,7 @@ test_that("get_manifest rejects an unsupported manifest version", {
   on.exit({
     pkg$manifest_url <- original_url
     unlink(fixture)
-    bedrockbio:::reset()
+    clear_state()
   })
   expect_error(
     bedrockbio:::get_manifest(),
@@ -111,7 +111,7 @@ test_that("get_namespaces returns a named list of namespace entries", {
 test_that("get_connection uses anonymous vhost settings", {
   skip_on_cran()
   skip_if_offline()
-  bedrockbio:::reset()
+  clear_state()
   conn <- bedrockbio:::get_connection()
   expect_s4_class(conn, "duckdb_connection")
   secrets <- DBI::dbGetQuery(conn, "FROM duckdb_secrets()")
@@ -123,7 +123,7 @@ test_that("get_connection uses anonymous vhost settings", {
 test_that("get_connection caches", {
   skip_on_cran()
   skip_if_offline()
-  bedrockbio:::reset()
+  clear_state()
   first <- bedrockbio:::get_connection()
   second <- bedrockbio:::get_connection()
   expect_identical(first, second)

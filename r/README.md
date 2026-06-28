@@ -10,7 +10,7 @@ datasets. Tables support predicate pushdown and projection to the cloud
 storage backend, enabling quick, iterative access to otherwise massive,
 unwieldy tables.
 
-`bedrockbio` consists of six user-facing functions:
+`bedrockbio` consists of five user-facing functions:
 
 - `list_namespaces()`: returns a character vector of available namespace
   (data source) identifiers
@@ -21,7 +21,6 @@ unwieldy tables.
 - `describe_table("<name>")`: returns a table's context, column definitions,
   and partition columns (with their allowed values)
 - `load_table("<name>")`: returns a lazily-evaluated data frame for a table
-- `reset()`: clears cached state (manifest, namespaces, connection)
 
 `dplyr` verbs (`filter`, `select`) can be used on the data frame returned by
 `load_table` to push down row filters and column selections to the storage
