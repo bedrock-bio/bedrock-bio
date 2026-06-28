@@ -11,6 +11,9 @@
   upstream status.
 * Examples are wrapped in \dontrun{} because they require network
   access that is not available on the CRAN build farm.
+* The spell check may flag "pushdown"; this is intended, as "predicate
+  pushdown" is the standard term for the query optimization the package
+  relies on.
 
 ## Test environments
 

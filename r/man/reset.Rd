@@ -2,7 +2,7 @@
 % Please edit documentation in R/reset.R
 \name{reset}
 \alias{reset}
-\title{Clear cached Bedrock Bio state}
+\title{Clear cached state (manifest, namespaces, and connection)}
 \usage{
 reset()
 }
@@ -10,16 +10,11 @@ reset()
 Invisibly \code{NULL}.
 }
 \description{
-Clears the cached manifest, namespaces, and database connection, and
-re-resolves the data host from the \code{BB_ENV} environment variable. The next
-call to a query function re-fetches the manifest and rebuilds the
-connection. Useful when the manifest has changed, or \code{BB_ENV} has changed,
-during a long-running session.
+The next call to a query function re-fetches the manifest and rebuilds the
+connection. Useful when the manifest or \code{BB_ENV} has changed during a
+long-running session.
 }
 \examples{
-\dontrun{
-library(bedrockbio)
 reset()
-}
 
 }

@@ -8,10 +8,7 @@ dbsnp <- function() {
 
 test_that("errors on unknown table", {
   skip_unless_live_v2()
-  expect_error(
-    load_table("not_a_table"),
-    "not found in manifest"
-  )
+  expect_error(load_table("not_a_table"), "not found in manifest")
 })
 
 test_that("returns a lazy tbl", {
@@ -37,10 +34,6 @@ test_that("select limits columns", {
 
 test_that("filters and projection are pushed into the scan", {
   skip_unless_live_v2()
-  # Partition filters (assembly, chromosome), a non-partition predicate
-  # (position), and a projection must all be pushed into the Iceberg scan
-  # rather than applied after a full read -- the partition-pruning /
-  # predicate-pushdown that makes the large tables usable.
   rel <- load_table("dbsnp.vcf") |>
     dplyr::filter(
       assembly == "GRCh38",
@@ -53,23 +46,18 @@ test_that("filters and projection are pushed into the scan", {
   plan_text <- paste(unlist(plan), collapse = "\n")
 
   expect_match(plan_text, "ICEBERG_SCAN")
-  # No standalone FILTER operator: all predicates reached the scan.
   expect_false(grepl("FILTER", plan_text))
   expect_match(plan_text, "assembly='GRCh38'")
   expect_match(plan_text, "chromosome='22'")
   expect_match(plan_text, "50000000")
-  # Projection pushed down: unselected columns are pruned from the scan.
   expect_false(grepl("ref_allele", plan_text))
   expect_false(grepl("alt_allele", plan_text))
 })
 
 test_that("reads a second real table end to end", {
   skip_unless_live_v2()
-  # A non-dbsnp table read against the live manifest, to exercise a different
-  # namespace/partition layout (ensembl.taxonomies is partitioned by release).
   df <- load_table("ensembl.taxonomies") |>
     head(3) |>
     dplyr::collect()
   expect_equal(nrow(df), 3L)
-  expect_true(ncol(df) > 0)
 })

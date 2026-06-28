@@ -1,5 +1,3 @@
-# --- get_manifest ---
-
 test_that("get_manifest returns a named list of v2 entry lists", {
   local_v2_manifest()
   result <- bedrockbio:::get_manifest()
@@ -72,7 +70,6 @@ test_that("get_manifest lifts the v2 table block", {
   )
   expect_equal(entry$partitions$chromosome$default, "")
 
-  # Columns are lifted wholesale; v2 carries no allowed_values.
   c1 <- entry$columns[[1]]
   expect_equal(c1$name, "disease_id")
   expect_equal(c1$type, "TEXT")
@@ -83,15 +80,12 @@ test_that("get_manifest lifts the v2 table block", {
   }
 })
 
-# --- get_namespaces ---
-
 test_that("get_namespaces lifts the v2 namespace block", {
   local_v2_manifest()
   result <- bedrockbio:::get_namespaces()
   ns <- result[["test_ns"]]
   expect_equal(ns$name, "Test Namespace")
   expect_equal(ns$license, "CC0 1.0")
-  # citation is a pre-formatted string in v2, not a structured object.
   expect_type(ns$citation, "character")
   expect_equal(ns$citation, "Some Author. Some Journal 2025. doi:10.0/test")
   expect_equal(ns$context, "What this data source is and how to use it.")
@@ -113,8 +107,6 @@ test_that("get_namespaces returns a named list of namespace entries", {
     expect_true(all(startsWith(entry$tables, paste0(ns_id, "."))))
   }
 })
-
-# --- get_connection ---
 
 test_that("get_connection uses anonymous vhost settings", {
   skip_on_cran()

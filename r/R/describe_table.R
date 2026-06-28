@@ -1,22 +1,20 @@
 #' Describe a table: its context, columns, and partitions
 #'
-#' @param name Table identifier (e.g., "ukb_ppp.pqtls")
-#' @returns A named list with `name`, `context` (prose: what the table is, how
-#'   to query it, sort/related-table hints), `columns` (each a list of
-#'   `name`, `type`, `description`, `nullable`), and `partitions` (a named list
-#'   of partition column to `values` and `default`).
+#' @param name Table identifier.
+#' @returns A named list with `name`, `context`, `columns` (each with `name`,
+#'   `type`, `description`, `nullable`), and `partitions` (a named list of
+#'   partition column to `values` and `default`). Filter on partition columns
+#'   for fastest reads.
 #'
 #' @examples
 #' \dontrun{
 #' library(bedrockbio)
-#' info <- describe_table("ukb_ppp.pqtls")
-#' info$name
+#' describe_table("ukb_ppp.pqtls")$name
 #' }
 #'
 #' @export
 describe_table <- function(name) {
   manifest <- get_manifest()
-
   if (!name %in% names(manifest)) {
     stop(
       "Table '", name, "' not found in manifest. ",

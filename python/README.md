@@ -10,16 +10,18 @@ datasets. Tables support predicate pushdown and projection to the cloud
 storage backend, enabling quick, iterative access to otherwise massive,
 unwieldy tables.
 
-`bedrock_bio` consists of five user-facing functions:
+`bedrock_bio` consists of six user-facing functions:
 
 - `list_namespaces()`: returns a list of available namespace (data source)
   identifiers
-- `describe_namespace('<name>')`: returns metadata, citation, license,
-  instructions, and the tables for a namespace
-- `list_tables()`: returns a list of available table identifiers
-- `describe_table('<name>')`: returns metadata, citation, partition and sort
-  keys, and column definitions for a table
+- `describe_namespace('<name>')`: returns a namespace's name, citation,
+  license, context, and its tables
+- `list_tables(namespace)`: returns a list of table identifiers, optionally
+  filtered to one namespace
+- `describe_table('<name>')`: returns a table's context, column definitions,
+  and partition columns (with their allowed values)
 - `load_table('<name>')`: returns a lazy DuckDB relation for a table
+- `reset()`: clears cached state (manifest, namespaces, connection)
 
 DuckDB methods (`filter`, `select`, `limit`) can be used on the relation
 returned by `load_table` to push down row filters and column selections to

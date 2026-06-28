@@ -7,13 +7,13 @@
 describe_table(name)
 }
 \arguments{
-\item{name}{Table identifier (e.g., "ukb_ppp.pqtls")}
+\item{name}{Table identifier.}
 }
 \value{
-A named list with \code{name}, \code{context} (prose: what the table is, how
-to query it, sort/related-table hints), \code{columns} (each a list of
-\code{name}, \code{type}, \code{description}, \code{nullable}), and \code{partitions} (a named list
-of partition column to \code{values} and \code{default}).
+A named list with \code{name}, \code{context}, \code{columns} (each with \code{name},
+\code{type}, \code{description}, \code{nullable}), and \code{partitions} (a named list of
+partition column to \code{values} and \code{default}). Filter on partition columns
+for fastest reads.
 }
 \description{
 Describe a table: its context, columns, and partitions
@@ -21,8 +21,7 @@ Describe a table: its context, columns, and partitions
 \examples{
 \dontrun{
 library(bedrockbio)
-info <- describe_table("ukb_ppp.pqtls")
-info$name
+describe_table("ukb_ppp.pqtls")$name
 }
 
 }
