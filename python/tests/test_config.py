@@ -6,20 +6,73 @@ import pytest
 from bedrock_bio.config import config
 
 
+# A hand-built v2 manifest derived from docs/MANIFEST.md, used to unit-test the
+# parser without a live network fetch.
+V2_MANIFEST = {
+    "version": 2,
+    "published_at": "2026-06-27T00:00:00Z",
+    "namespaces": {
+        "test_ns": {
+            "name": "Test Namespace",
+            "license": "CC0 1.0",
+            "citation": "Some Author. Some Journal 2025. doi:10.0/test",
+            "context": "What this data source is and how to use it.",
+            "tables": {
+                "test_tbl": {
+                    "partitions": {
+                        "release": {
+                            "values": ["26.03.0", "26.02.0"],
+                            "default": "26.03.0",
+                        },
+                        "chromosome": {"values": ["1", "22"], "default": ""},
+                    },
+                    "iceberg_json": "s3://test/metadata.json",
+                    "columns": [
+                        {
+                            "name": "disease_id",
+                            "type": "TEXT",
+                            "description": "An identifier.",
+                            "nullable": False,
+                        },
+                        {
+                            "name": "score",
+                            "type": "DOUBLE",
+                            "description": "A score.",
+                            "nullable": True,
+                        },
+                    ],
+                    "context": "What this table is and how to query it.",
+                }
+            },
+        }
+    },
+}
+
+
+@pytest.fixture
+def v2_manifest(monkeypatch, tmp_path):
+    """Point the config at a hand-built v2 manifest fixture on disk."""
+    fixture = tmp_path / "manifest.json"
+    fixture.write_text(json.dumps(V2_MANIFEST))
+    monkeypatch.setattr(
+        type(config), "manifest_url", property(lambda self: f"file://{fixture}")
+    )
+
+
 class TestConfig:
-    def test_manifest_returns_dict_with_expected_structure(self):
+    def test_manifest_returns_dict_with_expected_structure(self, v2_manifest):
         result = config.get_manifest()
         assert isinstance(result, dict)
         assert len(result) > 0
         for key, entry in result.items():
             assert isinstance(key, str)
             assert isinstance(entry, dict)
-            assert isinstance(entry["metadata_json"], str)
-            assert isinstance(entry["partition_by"], list)
-            assert isinstance(entry["sort_by"], list)
+            assert isinstance(entry["iceberg_json"], str)
+            assert isinstance(entry["partitions"], dict)
             assert isinstance(entry["columns"], list)
+            assert isinstance(entry["context"], str)
 
-    def test_manifest_caches_result(self):
+    def test_manifest_caches_result(self, v2_manifest):
         first = config.get_manifest()
         second = config.get_manifest()
         assert first is second
@@ -33,74 +86,55 @@ class TestConfig:
         with pytest.raises(ConnectionError, match="Unable to access manifest URL"):
             config.get_manifest()
 
-    def test_manifest_preserves_whitelisted_column_keys(self, monkeypatch, tmp_path):
+    def test_manifest_rejects_unsupported_version(self, monkeypatch, tmp_path):
         fixture = tmp_path / "manifest.json"
-        fixture.write_text(
-            json.dumps(
-                {
-                    "namespaces": {
-                        "test_ns": {
-                            "citation": {},
-                            "source_url": "https://example.com",
-                            "license": "MIT",
-                            "tables": {
-                                "test_tbl": {
-                                    "metadata_json": "s3://test/metadata.json",
-                                    "description": "test",
-                                    "partition_by": [],
-                                    "sort_by": [],
-                                    "columns": [
-                                        {
-                                            "name": "col_with_extras",
-                                            "type": "string",
-                                            "description": "desc",
-                                            "nullable": True,
-                                            "allowed_values": ["A", "B"],
-                                            "extra_field": "should_be_stripped",
-                                            "another_extra": 123,
-                                        },
-                                        {
-                                            "name": "col_minimal",
-                                            "type": "int",
-                                            "description": "minimal",
-                                        },
-                                    ],
-                                }
-                            },
-                        }
-                    }
-                }
-            )
-        )
+        fixture.write_text(json.dumps({"version": 1, "namespaces": {}}))
         monkeypatch.setattr(
             type(config), "manifest_url", property(lambda self: f"file://{fixture}")
         )
+        with pytest.raises(ValueError, match="Unsupported manifest version"):
+            config.get_manifest()
 
+    def test_manifest_lifts_v2_table_block(self, v2_manifest):
         result = config.get_manifest()
-        cols = result["test_ns.test_tbl"]["columns"]
+        entry = result["test_ns.test_tbl"]
 
-        c1 = cols[0]
-        assert c1["name"] == "col_with_extras"
-        assert c1["type"] == "string"
-        assert c1["description"] == "desc"
-        assert c1["nullable"] is True
-        assert c1["allowed_values"] == ["A", "B"]
-        assert "extra_field" not in c1
-        assert "another_extra" not in c1
+        assert entry["iceberg_json"] == "s3://test/metadata.json"
+        assert entry["context"] == "What this table is and how to query it."
+        assert entry["partitions"]["release"]["default"] == "26.03.0"
+        assert entry["partitions"]["release"]["values"] == ["26.03.0", "26.02.0"]
+        assert entry["partitions"]["chromosome"]["default"] == ""
 
-        c2 = cols[1]
-        assert c2["name"] == "col_minimal"
-        assert "nullable" not in c2
-        assert "allowed_values" not in c2
+        # Columns are lifted wholesale (no cherry-pick), and carry no
+        # allowed_values in v2.
+        cols = entry["columns"]
+        assert cols[0] == {
+            "name": "disease_id",
+            "type": "TEXT",
+            "description": "An identifier.",
+            "nullable": False,
+        }
+        assert all("allowed_values" not in col for col in cols)
 
-    def test_namespaces_returns_dict_with_expected_structure(self):
+    def test_manifest_lifts_v2_namespace_block(self, v2_manifest):
+        ns = config.get_namespaces()["test_ns"]
+        assert ns["name"] == "Test Namespace"
+        assert ns["license"] == "CC0 1.0"
+        assert ns["citation"] == "Some Author. Some Journal 2025. doi:10.0/test"
+        assert ns["context"] == "What this data source is and how to use it."
+        assert ns["tables"] == ["test_ns.test_tbl"]
+        # citation is a pre-formatted string in v2, not a structured object.
+        assert isinstance(ns["citation"], str)
+
+    def test_namespaces_returns_dict_with_expected_structure(self, v2_manifest):
         result = config.get_namespaces()
         assert isinstance(result, dict)
         assert len(result) > 0
         for ns_id, entry in result.items():
-            assert entry["id"] == ns_id
             assert isinstance(entry["name"], str)
-            assert isinstance(entry["description"], str)
+            assert isinstance(entry["citation"], str)
+            assert isinstance(entry["license"], str)
+            assert isinstance(entry["context"], str)
             assert isinstance(entry["tables"], list)
             assert all(fqn.startswith(f"{ns_id}.") for fqn in entry["tables"])
 

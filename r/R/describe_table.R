@@ -1,8 +1,10 @@
-#' Describe a table's metadata, citation, and columns
+#' Describe a table: its context, columns, and partitions
 #'
 #' @param name Table identifier (e.g., "ukb_ppp.pqtls")
-#' @returns A named list with name, description, citation, source_url,
-#'   license, partition_by, sort_by, and columns.
+#' @returns A named list with `name`, `context` (prose: what the table is, how
+#'   to query it, sort/related-table hints), `columns` (each a list of
+#'   `name`, `type`, `description`, `nullable`), and `partitions` (a named list
+#'   of partition column to `values` and `default`).
 #'
 #' @examples
 #' \dontrun{
@@ -26,12 +28,8 @@ describe_table <- function(name) {
   entry <- manifest[[name]]
   list(
     name = name,
-    description = entry$description,
-    citation = entry$citation,
-    source_url = entry$source_url,
-    license = entry$license,
-    partition_by = entry$partition_by,
-    sort_by = entry$sort_by,
-    columns = entry$columns
+    context = entry$context,
+    columns = entry$columns,
+    partitions = entry$partitions
   )
 }

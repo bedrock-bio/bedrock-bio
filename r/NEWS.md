@@ -3,6 +3,13 @@
 * Reads are now anonymous over HTTPS — the client no longer fetches
   `credentials.json` or creates an R2 S3 secret. No API keys are required.
   Partition pruning and predicate pushdown are unchanged.
+* **Manifest v2 (breaking).** The client now reads the v2 `manifest.json` and
+  hard-gates on `version == 2`; older client releases reading v1 must upgrade.
+  `describe_table()` now returns `context`, `columns`, and `partitions`
+  (each partition column carrying its allowed `values` and `default`);
+  `describe_namespace()` returns `name`, `citation`, `license`, `context`, and
+  the namespace's tables. Column entries no longer carry `allowed_values`
+  (enumerated values live under `partitions`).
 
 # bedrockbio 1.4.1
 

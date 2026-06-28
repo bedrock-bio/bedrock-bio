@@ -3,7 +3,7 @@ from .config import config
 
 def describe_namespace(name: str) -> dict:
     """
-    Describe a namespace's metadata, citation, license, and tables.
+    Describe a namespace: its name, citation, license, context, and tables.
 
     Parameters
     ----------
@@ -13,9 +13,11 @@ def describe_namespace(name: str) -> dict:
     Returns
     -------
     dict
-        Namespace metadata with id, name, description, source_url, license,
-        instructions, citation, and tables (list of fully-qualified table
-        identifiers). Use ``describe_table()`` for per-table details.
+        Namespace metadata with ``name``, ``citation`` (a ready-to-cite
+        string), ``license``, ``context`` (prose: what the data source is,
+        where it's from, how to use it), and ``tables`` (list of
+        fully-qualified table identifiers). Use ``describe_table()`` for
+        per-table details.
 
     Raises
     ------

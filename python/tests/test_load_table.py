@@ -2,18 +2,22 @@ import duckdb
 import pytest
 
 from bedrock_bio.load_table import load_table
+from conftest import requires_live_v2_manifest
 
 
 class TestLoadTable:
     def test_no_table(self):
+        requires_live_v2_manifest()
         with pytest.raises(ValueError, match="not found in manifest"):
             load_table("not_a_table")
 
     def test_returns_relation(self):
+        requires_live_v2_manifest()
         rel = load_table("dbsnp.vcf")
         assert isinstance(rel, duckdb.DuckDBPyRelation)
 
     def test_select(self):
+        requires_live_v2_manifest()
         rel = (
             load_table("dbsnp.vcf")
             .filter("assembly = 'GRCh38' AND chromosome = '22'")
@@ -23,6 +27,7 @@ class TestLoadTable:
         assert rel.columns == ["chromosome", "position"]
 
     def test_filter_narrows(self):
+        requires_live_v2_manifest()
         rel = (
             load_table("dbsnp.vcf")
             .filter("assembly = 'GRCh38' AND chromosome = '22'")
@@ -40,6 +45,7 @@ class TestLoadTable:
         # the partition-pruning / predicate-pushdown that makes the large tables
         # usable; a regression here (e.g. binding the scan path as a parameter)
         # silently disables it.
+        requires_live_v2_manifest()
         plan = (
             load_table("dbsnp.vcf")
             .filter("assembly = 'GRCh38' AND chromosome = '22' AND position > 50000000")
@@ -59,6 +65,7 @@ class TestLoadTable:
     def test_reads_unpartitioned_table(self):
         # The other table shape: a single-file table with no partition columns
         # (dbsnp.vcf above is hive-partitioned).
+        requires_live_v2_manifest()
         rel = load_table("ensembl.taxonomies").limit(3)
         rows = rel.fetchall()
         assert len(rows) == 3

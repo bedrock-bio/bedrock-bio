@@ -4,8 +4,9 @@ import os
 import urllib.request
 from dataclasses import dataclass
 
-# Column keys preserved from the manifest, in this order.
-COLUMN_FIELDS = ("name", "type", "description", "nullable", "allowed_values")
+# The manifest schema version this client understands. The client hard-gates on
+# this so a stale v1 manifest fails loudly rather than mis-parsing silently.
+MANIFEST_VERSION = 2
 
 
 @dataclass
@@ -42,37 +43,37 @@ class Config:
                 f"Unable to access manifest URL {self.manifest_url!r}"
             )
 
+        version = raw.get("version")
+        if version != MANIFEST_VERSION:
+            raise ValueError(
+                f"Unsupported manifest version {version!r} at "
+                f"{self.manifest_url!r}; this client requires version "
+                f"{MANIFEST_VERSION}. Upgrade bedrock-bio to the latest release."
+            )
+
         self.manifest = {}
         self.namespaces = {}
 
         for ns, ns_data in raw["namespaces"].items():
             table_fqns = []
-            for table_name, metadata in ns_data["tables"].items():
+            for table_name, table in ns_data["tables"].items():
                 fqn = f"{ns}.{table_name}"
                 table_fqns.append(fqn)
 
+                # `columns` is lifted wholesale (no field cherry-pick); the LLM
+                # consumes it as-is to write correct SQL.
                 self.manifest[fqn] = {
-                    "metadata_json": metadata["metadata_json"],
-                    "partition_by": list(metadata.get("partition_by", [])),
-                    "sort_by": list(metadata.get("sort_by", [])),
-                    "description": metadata.get("description", ""),
-                    "citation": ns_data.get("citation"),
-                    "source_url": ns_data.get("source_url", ""),
-                    "license": ns_data.get("license", ""),
-                    "columns": [
-                        {tf: col[tf] for tf in COLUMN_FIELDS if tf in col}
-                        for col in metadata.get("columns", [])
-                    ],
+                    "iceberg_json": table["iceberg_json"],
+                    "partitions": table.get("partitions", {}),
+                    "columns": table.get("columns", []),
+                    "context": table.get("context", ""),
                 }
 
             self.namespaces[ns] = {
-                "id": ns,
                 "name": ns_data.get("name", ""),
-                "description": ns_data.get("description", ""),
-                "source_url": ns_data.get("source_url", ""),
                 "license": ns_data.get("license", ""),
-                "instructions": ns_data.get("instructions", ""),
-                "citation": ns_data.get("citation"),
+                "citation": ns_data.get("citation", ""),
+                "context": ns_data.get("context", ""),
                 "tables": table_fqns,
             }
 

@@ -8,7 +8,9 @@ fetch_json <- function(url) {
   readLines(con, warn = FALSE)
 }
 
-column_fields <- c("name", "type", "description", "nullable", "allowed_values")
+# The manifest schema version this client understands. The client hard-gates on
+# this so a stale v1 manifest fails loudly rather than mis-parsing silently.
+manifest_version <- 2L
 
 default_if_null <- function(x, default) if (is.null(x)) default else x
 
@@ -26,6 +28,15 @@ load_manifest <- function() {
     }
   )
 
+  if (!identical(as.integer(default_if_null(raw$version, NA)), manifest_version)) {
+    stop(
+      "Unsupported manifest version '", default_if_null(raw$version, "NULL"),
+      "' at '", pkg$manifest_url, "'; this client requires version ",
+      manifest_version, ". Upgrade bedrockbio to the latest release.",
+      call. = FALSE
+    )
+  }
+
   manifest <- list()
   namespaces <- list()
   for (ns in names(raw$namespaces)) {
@@ -33,30 +44,22 @@ load_manifest <- function() {
     table_fqns <- paste0(ns, ".", names(ns_data$tables))
 
     for (i in seq_along(ns_data$tables)) {
-      meta <- ns_data$tables[[i]]
+      tbl <- ns_data$tables[[i]]
+      # `columns` is lifted wholesale (no field cherry-pick); the LLM consumes
+      # it as-is to write correct SQL.
       manifest[[table_fqns[i]]] <- list(
-        metadata_json = meta$metadata_json,
-        partition_by = as.character(meta$partition_by),
-        sort_by = as.character(meta$sort_by),
-        description = default_if_null(meta$description, ""),
-        citation = ns_data$citation,
-        source_url = default_if_null(ns_data$source_url, ""),
-        license = default_if_null(ns_data$license, ""),
-        columns = lapply(
-          meta$columns,
-          function(col) col[intersect(column_fields, names(col))]
-        )
+        iceberg_json = tbl$iceberg_json,
+        partitions = default_if_null(tbl$partitions, list()),
+        columns = default_if_null(tbl$columns, list()),
+        context = default_if_null(tbl$context, "")
       )
     }
 
     namespaces[[ns]] <- list(
-      id = ns,
       name = default_if_null(ns_data$name, ""),
-      description = default_if_null(ns_data$description, ""),
-      source_url = default_if_null(ns_data$source_url, ""),
       license = default_if_null(ns_data$license, ""),
-      instructions = default_if_null(ns_data$instructions, ""),
-      citation = ns_data$citation,
+      citation = default_if_null(ns_data$citation, ""),
+      context = default_if_null(ns_data$context, ""),
       tables = table_fqns
     )
   }

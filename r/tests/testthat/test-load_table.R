@@ -7,6 +7,7 @@ dbsnp <- function() {
 }
 
 test_that("errors on unknown table", {
+  skip_unless_live_v2()
   expect_error(
     load_table("not_a_table"),
     "not found in manifest"
@@ -14,16 +15,19 @@ test_that("errors on unknown table", {
 })
 
 test_that("returns a lazy tbl", {
+  skip_unless_live_v2()
   expect_s3_class(load_table("dbsnp.vcf"), "tbl_lazy")
 })
 
 test_that("filter narrows results", {
+  skip_unless_live_v2()
   df <- head(dbsnp(), 5) |> dplyr::collect()
   expect_equal(nrow(df), 5L)
   expect_equal(unique(df$chromosome), "22")
 })
 
 test_that("select limits columns", {
+  skip_unless_live_v2()
   df <- dbsnp() |>
     dplyr::select(chromosome, position) |>
     head(5) |>
@@ -32,6 +36,7 @@ test_that("select limits columns", {
 })
 
 test_that("filters and projection are pushed into the scan", {
+  skip_unless_live_v2()
   # Partition filters (assembly, chromosome), a non-partition predicate
   # (position), and a projection must all be pushed into the Iceberg scan
   # rather than applied after a full read -- the partition-pruning /
@@ -59,6 +64,7 @@ test_that("filters and projection are pushed into the scan", {
 })
 
 test_that("reads an unpartitioned table", {
+  skip_unless_live_v2()
   # The other table shape: a single-file table with no partition columns
   # (dbsnp.vcf above is hive-partitioned).
   df <- load_table("ensembl.taxonomies") |>
