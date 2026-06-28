@@ -4,9 +4,9 @@ pkg <- new.env(parent = emptyenv())
 # and again on reset() so a mid-session BB_ENV change takes effect.
 set_host_urls <- function() {
   host <- if (identical(Sys.getenv("BB_ENV"), "dev")) {
-    "https://data-dev.bedrock.bio"
+    "https://datasets-dev.bedrock.bio"
   } else {
-    "https://data.bedrock.bio"
+    "https://datasets.bedrock.bio"
   }
   pkg$manifest_url <- paste0(host, "/manifest.json")
 }

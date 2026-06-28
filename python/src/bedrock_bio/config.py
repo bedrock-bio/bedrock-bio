@@ -18,9 +18,9 @@ class Config:
     @property
     def base_url(self) -> str:
         if os.environ.get("BB_ENV") == "dev":
-            return "https://data-dev.bedrock.bio"
+            return "https://datasets-dev.bedrock.bio"
         else:
-            return "https://data.bedrock.bio"
+            return "https://datasets.bedrock.bio"
 
     @property
     def manifest_url(self) -> str:
