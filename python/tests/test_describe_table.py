@@ -1,5 +1,8 @@
+import json
+
 import pytest
 
+from bedrock_bio.config import config
 from bedrock_bio.describe_table import describe_table
 from conftest import requires_live_v2_manifest
 
@@ -43,9 +46,42 @@ class TestDescribeTable:
             assert "values" in col
             assert "default" in col
 
-    def test_unpartitioned_table_returns_empty_partitions(self):
-        # The other table shape: a single-file table with no partition columns
-        # (dbsnp.vcf above is hive-partitioned).
-        requires_live_v2_manifest()
-        result = describe_table("ensembl.taxonomies")
+    def test_unpartitioned_table_returns_empty_partitions(self, monkeypatch, tmp_path):
+        # The other table shape: a single-file table with no partition columns.
+        # Pinned to a fixture rather than live data -- every table in the live
+        # prod manifest is currently partitioned (ensembl.* by release), so the
+        # unpartitioned shape can only be exercised deterministically.
+        manifest = {
+            "version": 2,
+            "published_at": "2026-06-27T00:00:00Z",
+            "namespaces": {
+                "test_ns": {
+                    "name": "Test Namespace",
+                    "license": "CC0 1.0",
+                    "citation": "Some Author. Some Journal 2025. doi:10.0/test",
+                    "context": "What this data source is.",
+                    "tables": {
+                        "flat_tbl": {
+                            "partitions": {},
+                            "iceberg_json": "s3://test/metadata.json",
+                            "columns": [
+                                {
+                                    "name": "id",
+                                    "type": "TEXT",
+                                    "description": "An identifier.",
+                                    "nullable": False,
+                                }
+                            ],
+                            "context": "A single-file table with no partitions.",
+                        }
+                    },
+                }
+            },
+        }
+        fixture = tmp_path / "manifest.json"
+        fixture.write_text(json.dumps(manifest))
+        monkeypatch.setattr(
+            type(config), "manifest_url", property(lambda self: f"file://{fixture}")
+        )
+        result = describe_table("test_ns.flat_tbl")
         assert result["partitions"] == {}

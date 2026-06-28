@@ -63,10 +63,10 @@ test_that("filters and projection are pushed into the scan", {
   expect_false(grepl("alt_allele", plan_text))
 })
 
-test_that("reads an unpartitioned table", {
+test_that("reads a second real table end to end", {
   skip_unless_live_v2()
-  # The other table shape: a single-file table with no partition columns
-  # (dbsnp.vcf above is hive-partitioned).
+  # A non-dbsnp table read against the live manifest, to exercise a different
+  # namespace/partition layout (ensembl.taxonomies is partitioned by release).
   df <- load_table("ensembl.taxonomies") |>
     head(3) |>
     dplyr::collect()
