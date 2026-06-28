@@ -1,4 +1,4 @@
-# bedrockbio 1.5.0
+# bedrockbio 2.0.0
 
 * Reads are now anonymous over HTTPS — the client no longer fetches
   `credentials.json` or creates an R2 S3 secret. No API keys are required.
