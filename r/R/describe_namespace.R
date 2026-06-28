@@ -1,9 +1,10 @@
-#' Describe a namespace's metadata, citation, license, and tables
+#' Describe a namespace: its name, citation, license, context, and tables
 #'
 #' @param name Namespace identifier (e.g., "ukb_ppp")
-#' @returns A named list with id, name, description, source_url, license,
-#'   instructions, citation, and tables (character vector of fully-qualified
-#'   table identifiers). Use `describe_table()` for per-table details.
+#' @returns A named list with `name`, `citation` (a ready-to-cite string),
+#'   `license`, `context` (prose: what the data source is, where it's from, how
+#'   to use it), and `tables` (character vector of fully-qualified table
+#'   identifiers). Use `describe_table()` for per-table details.
 #'
 #' @examples
 #' \dontrun{

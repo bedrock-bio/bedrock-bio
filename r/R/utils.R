@@ -1,14 +1,16 @@
 fetch_json <- function(url) {
   h <- curl::new_handle()
   curl::handle_setheaders(h, "User-Agent" = "bedrock-bio")
-  # Bound network stalls on the manifest/credentials fetches (seconds).
+  # Bound network stalls on the manifest fetch (seconds).
   curl::handle_setopt(h, connecttimeout = 10, timeout = 10)
   con <- curl::curl(url, handle = h)
   on.exit(close(con))
   readLines(con, warn = FALSE)
 }
 
-column_fields <- c("name", "type", "description", "nullable", "allowed_values")
+# The manifest schema version this client understands. The client hard-gates on
+# this so a stale v1 manifest fails loudly rather than mis-parsing silently.
+manifest_version <- 2L
 
 default_if_null <- function(x, default) if (is.null(x)) default else x
 
@@ -26,6 +28,16 @@ load_manifest <- function() {
     }
   )
 
+  raw_version <- as.integer(default_if_null(raw$version, NA))
+  if (!identical(raw_version, manifest_version)) {
+    stop(
+      "Unsupported manifest version '", default_if_null(raw$version, "NULL"),
+      "' at '", pkg$manifest_url, "'; this client requires version ",
+      manifest_version, ". Upgrade bedrockbio to the latest release.",
+      call. = FALSE
+    )
+  }
+
   manifest <- list()
   namespaces <- list()
   for (ns in names(raw$namespaces)) {
@@ -33,30 +45,22 @@ load_manifest <- function() {
     table_fqns <- paste0(ns, ".", names(ns_data$tables))
 
     for (i in seq_along(ns_data$tables)) {
-      meta <- ns_data$tables[[i]]
+      tbl <- ns_data$tables[[i]]
+      # `columns` is lifted wholesale (no field cherry-pick); the LLM consumes
+      # it as-is to write correct SQL.
       manifest[[table_fqns[i]]] <- list(
-        metadata_json = meta$metadata_json,
-        partition_by = as.character(meta$partition_by),
-        sort_by = as.character(meta$sort_by),
-        description = default_if_null(meta$description, ""),
-        citation = ns_data$citation,
-        source_url = default_if_null(ns_data$source_url, ""),
-        license = default_if_null(ns_data$license, ""),
-        columns = lapply(
-          meta$columns,
-          function(col) col[intersect(column_fields, names(col))]
-        )
+        iceberg_json = tbl$iceberg_json,
+        partitions = default_if_null(tbl$partitions, list()),
+        columns = default_if_null(tbl$columns, list()),
+        context = default_if_null(tbl$context, "")
       )
     }
 
     namespaces[[ns]] <- list(
-      id = ns,
       name = default_if_null(ns_data$name, ""),
-      description = default_if_null(ns_data$description, ""),
-      source_url = default_if_null(ns_data$source_url, ""),
       license = default_if_null(ns_data$license, ""),
-      instructions = default_if_null(ns_data$instructions, ""),
-      citation = ns_data$citation,
+      citation = default_if_null(ns_data$citation, ""),
+      context = default_if_null(ns_data$context, ""),
       tables = table_fqns
     )
   }
@@ -78,43 +82,21 @@ get_namespaces <- function() {
 }
 
 #' @noRd
-get_credentials <- function() {
-  if (!is.null(pkg$credentials)) {
-    return(pkg$credentials)
-  }
-
-  pkg$credentials <- tryCatch(
-    jsonlite::fromJSON(fetch_json(pkg$credentials_url)),
-    error = function(e) {
-      stop(
-        "Unable to access credentials URL '", pkg$credentials_url, "'",
-        call. = FALSE
-      )
-    }
-  )
-  pkg$credentials
-}
-
-#' @noRd
 get_connection <- function() {
   if (!is.null(pkg$conn)) {
     return(pkg$conn)
   }
 
-  credentials <- get_credentials()
   pkg$conn <- DBI::dbConnect(duckdb::duckdb())
   DBI::dbExecute(pkg$conn, "INSTALL httpfs")
   DBI::dbExecute(pkg$conn, "INSTALL iceberg")
-
-  DBI::dbExecute(
-    pkg$conn,
-    "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
-    params = list(
-      credentials$R2_ACCESS_KEY_ID,
-      credentials$R2_SECRET_ACCESS_KEY,
-      paste0(credentials$R2_ACCOUNT_ID, ".r2.cloudflarestorage.com")
-    )
-  )
+  # Anonymous, cache-fronted reads over the public custom domain. metadata_json
+  # is s3://<bucket>/...; vhost maps it to https://<bucket>.bedrock.bio/... —
+  # no credentials, no S3 API. The connection is private to this package.
+  DBI::dbExecute(pkg$conn, "SET s3_endpoint='bedrock.bio'")
+  DBI::dbExecute(pkg$conn, "SET s3_url_style='vhost'")
+  DBI::dbExecute(pkg$conn, "SET s3_use_ssl=true")
+  DBI::dbExecute(pkg$conn, "SET s3_region='auto'")
 
   pkg$conn
 }

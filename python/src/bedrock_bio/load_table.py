@@ -16,8 +16,8 @@ def load_table(name: str) -> duckdb.DuckDBPyRelation:
     -------
     duckdb.DuckDBPyRelation
         A lazy relation that can be further filtered, selected, or collected.
-        Use ``describe_table(name)`` to see partition columns and per-column
-        allowed values; filter on partition columns for fastest reads.
+        Use ``describe_table(name)`` to see partition columns and their allowed
+        values; filter on partition columns for fastest reads.
 
     Raises
     ------
@@ -53,5 +53,5 @@ def load_table(name: str) -> duckdb.DuckDBPyRelation:
     # parameter: a bind parameter in iceberg_scan() defeats DuckDB's Iceberg
     # partition pruning and predicate pushdown. The path is catalog-derived and
     # trusted; escaping embedded quotes is sufficient.
-    escaped = entry["metadata_json"].replace("'", "''")
+    escaped = entry["iceberg_json"].replace("'", "''")
     return conn.sql(f"SELECT * FROM iceberg_scan('{escaped}')")

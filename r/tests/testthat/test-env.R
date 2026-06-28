@@ -7,8 +7,7 @@ test_that("default uses prod host", {
   Sys.unsetenv("BB_ENV")
   bedrockbio:::.onLoad(NULL, NULL)
   pkg <- bedrockbio:::pkg
-  expect_equal(pkg$manifest_url, "https://data.bedrock.bio/manifest.json")
-  expect_equal(pkg$credentials_url, "https://data.bedrock.bio/credentials.json")
+  expect_equal(pkg$manifest_url, "https://datasets.bedrock.bio/manifest.json")
 })
 
 test_that("BB_ENV=dev uses dev host", {
@@ -20,10 +19,9 @@ test_that("BB_ENV=dev uses dev host", {
   Sys.setenv(BB_ENV = "dev")
   bedrockbio:::.onLoad(NULL, NULL)
   pkg <- bedrockbio:::pkg
-  expect_equal(pkg$manifest_url, "https://data-dev.bedrock.bio/manifest.json")
   expect_equal(
-    pkg$credentials_url,
-    "https://data-dev.bedrock.bio/credentials.json"
+    pkg$manifest_url,
+    "https://datasets-dev.bedrock.bio/manifest.json"
   )
 })
 
@@ -37,6 +35,6 @@ test_that("reset re-resolves host from BB_ENV", {
   bedrockbio:::reset()
   expect_equal(
     bedrockbio:::pkg$manifest_url,
-    "https://data-dev.bedrock.bio/manifest.json"
+    "https://datasets-dev.bedrock.bio/manifest.json"
   )
 })

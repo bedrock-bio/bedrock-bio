@@ -2,7 +2,7 @@
 % Please edit documentation in R/describe_namespace.R
 \name{describe_namespace}
 \alias{describe_namespace}
-\title{Describe a namespace's metadata, citation, license, and tables}
+\title{Describe a namespace: its name, citation, license, context, and tables}
 \usage{
 describe_namespace(name)
 }
@@ -10,12 +10,13 @@ describe_namespace(name)
 \item{name}{Namespace identifier (e.g., "ukb_ppp")}
 }
 \value{
-A named list with id, name, description, source_url, license,
-instructions, citation, and tables (character vector of fully-qualified
-table identifiers). Use \code{describe_table()} for per-table details.
+A named list with \code{name}, \code{citation} (a ready-to-cite string),
+\code{license}, \code{context} (prose: what the data source is, where it's from, how
+to use it), and \code{tables} (character vector of fully-qualified table
+identifiers). Use \code{describe_table()} for per-table details.
 }
 \description{
-Describe a namespace's metadata, citation, license, and tables
+Describe a namespace: its name, citation, license, context, and tables
 }
 \examples{
 \dontrun{

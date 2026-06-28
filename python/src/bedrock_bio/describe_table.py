@@ -3,7 +3,7 @@ from .config import config
 
 def describe_table(name: str) -> dict:
     """
-    Describe a table's metadata, citation, and columns.
+    Describe a table: its context, columns, and partitions.
 
     Parameters
     ----------
@@ -13,8 +13,11 @@ def describe_table(name: str) -> dict:
     Returns
     -------
     dict
-        Table metadata including description, citation, source_url,
-        license, partition_by, sort_by, and column definitions.
+        Table metadata: ``name``, ``context`` (prose: what the table is, how to
+        query it, sort/related-table hints), ``columns`` (a list of
+        ``{name, type, description, nullable}``), and ``partitions`` (a mapping
+        of partition column to ``{values, default}``). Filter on partition
+        columns for the fastest reads.
 
     Raises
     ------
@@ -42,11 +45,7 @@ def describe_table(name: str) -> dict:
     entry = manifest[name]
     return {
         "name": name,
-        "description": entry["description"],
-        "citation": entry["citation"],
-        "source_url": entry["source_url"],
-        "license": entry["license"],
-        "partition_by": entry["partition_by"],
-        "sort_by": entry["sort_by"],
+        "context": entry["context"],
         "columns": entry["columns"],
+        "partitions": entry["partitions"],
     }

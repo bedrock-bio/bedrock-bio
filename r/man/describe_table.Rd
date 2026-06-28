@@ -2,7 +2,7 @@
 % Please edit documentation in R/describe_table.R
 \name{describe_table}
 \alias{describe_table}
-\title{Describe a table's metadata, citation, and columns}
+\title{Describe a table: its context, columns, and partitions}
 \usage{
 describe_table(name)
 }
@@ -10,11 +10,13 @@ describe_table(name)
 \item{name}{Table identifier (e.g., "ukb_ppp.pqtls")}
 }
 \value{
-A named list with name, description, citation, source_url,
-license, partition_by, sort_by, and columns.
+A named list with \code{name}, \code{context} (prose: what the table is, how
+to query it, sort/related-table hints), \code{columns} (each a list of
+\code{name}, \code{type}, \code{description}, \code{nullable}), and \code{partitions} (a named list
+of partition column to \code{values} and \code{default}).
 }
 \description{
-Describe a table's metadata, citation, and columns
+Describe a table: its context, columns, and partitions
 }
 \examples{
 \dontrun{

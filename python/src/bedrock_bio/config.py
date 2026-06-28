@@ -4,31 +4,27 @@ import os
 import urllib.request
 from dataclasses import dataclass
 
-# Column keys preserved from the manifest, in this order.
-COLUMN_FIELDS = ("name", "type", "description", "nullable", "allowed_values")
+# The manifest schema version this client understands. The client hard-gates on
+# this so a stale v1 manifest fails loudly rather than mis-parsing silently.
+MANIFEST_VERSION = 2
 
 
 @dataclass
 class Config:
     manifest: dict[str, dict] | None = None
     namespaces: dict[str, dict] | None = None
-    credentials: dict[str, str] | None = None
     conn: duckdb.DuckDBPyConnection | None = None
 
     @property
     def base_url(self) -> str:
         if os.environ.get("BB_ENV") == "dev":
-            return "https://data-dev.bedrock.bio"
+            return "https://datasets-dev.bedrock.bio"
         else:
-            return "https://data.bedrock.bio"
+            return "https://datasets.bedrock.bio"
 
     @property
     def manifest_url(self) -> str:
         return f"{self.base_url}/manifest.json"
-
-    @property
-    def credentials_url(self) -> str:
-        return f"{self.base_url}/credentials.json"
 
     def _load_manifest(self) -> None:
         if self.manifest is not None:
@@ -38,7 +34,7 @@ class Config:
             request = urllib.request.Request(
                 self.manifest_url, headers={"User-Agent": "bedrock-bio"}
             )
-            # Bound network stalls on the manifest/credentials fetches (seconds).
+            # Bound network stalls on the manifest fetch (seconds).
             with urllib.request.urlopen(request, timeout=10) as response:
                 raw = json.loads(response.read())
 
@@ -47,37 +43,37 @@ class Config:
                 f"Unable to access manifest URL {self.manifest_url!r}"
             )
 
+        version = raw.get("version")
+        if version != MANIFEST_VERSION:
+            raise ValueError(
+                f"Unsupported manifest version {version!r} at "
+                f"{self.manifest_url!r}; this client requires version "
+                f"{MANIFEST_VERSION}. Upgrade bedrock-bio to the latest release."
+            )
+
         self.manifest = {}
         self.namespaces = {}
 
         for ns, ns_data in raw["namespaces"].items():
             table_fqns = []
-            for table_name, metadata in ns_data["tables"].items():
+            for table_name, table in ns_data["tables"].items():
                 fqn = f"{ns}.{table_name}"
                 table_fqns.append(fqn)
 
+                # `columns` is lifted wholesale (no field cherry-pick); the LLM
+                # consumes it as-is to write correct SQL.
                 self.manifest[fqn] = {
-                    "metadata_json": metadata["metadata_json"],
-                    "partition_by": list(metadata.get("partition_by", [])),
-                    "sort_by": list(metadata.get("sort_by", [])),
-                    "description": metadata.get("description", ""),
-                    "citation": ns_data.get("citation"),
-                    "source_url": ns_data.get("source_url", ""),
-                    "license": ns_data.get("license", ""),
-                    "columns": [
-                        {tf: col[tf] for tf in COLUMN_FIELDS if tf in col}
-                        for col in metadata.get("columns", [])
-                    ],
+                    "iceberg_json": table["iceberg_json"],
+                    "partitions": table.get("partitions", {}),
+                    "columns": table.get("columns", []),
+                    "context": table.get("context", ""),
                 }
 
             self.namespaces[ns] = {
-                "id": ns,
                 "name": ns_data.get("name", ""),
-                "description": ns_data.get("description", ""),
-                "source_url": ns_data.get("source_url", ""),
                 "license": ns_data.get("license", ""),
-                "instructions": ns_data.get("instructions", ""),
-                "citation": ns_data.get("citation"),
+                "citation": ns_data.get("citation", ""),
+                "context": ns_data.get("context", ""),
                 "tables": table_fqns,
             }
 
@@ -89,40 +85,21 @@ class Config:
         self._load_manifest()
         return self.namespaces
 
-    def get_credentials(self) -> dict[str, str]:
-        if self.credentials is not None:
-            return self.credentials
-
-        try:
-            request = urllib.request.Request(
-                self.credentials_url, headers={"User-Agent": "bedrock-bio"}
-            )
-            with urllib.request.urlopen(request, timeout=10) as response:
-                self.credentials = json.loads(response.read())
-
-        except Exception:
-            raise ConnectionError(
-                f"Unable to access credentials URL {self.credentials_url!r}"
-            )
-
-        return self.credentials
-
     def get_connection(self) -> duckdb.DuckDBPyConnection:
         if self.conn is not None:
             return self.conn
 
-        credentials = self.get_credentials()
         self.conn = duckdb.connect()
         self.conn.sql("INSTALL httpfs")
         self.conn.sql("INSTALL iceberg")
-        self.conn.execute(
-            "CREATE SECRET (TYPE s3, KEY_ID ?, SECRET ?, ENDPOINT ?, URL_STYLE 'path')",
-            [
-                credentials["R2_ACCESS_KEY_ID"],
-                credentials["R2_SECRET_ACCESS_KEY"],
-                f"{credentials['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
-            ],
-        )
+        # Anonymous, cache-fronted reads over the public custom domain. Each
+        # table's metadata_json is s3://<bucket>/...; vhost resolution maps it to
+        # https://<bucket>.bedrock.bio/... — no credentials, no S3 API, no listing.
+        # The connection is private to this package, so global SET is safe here.
+        self.conn.sql("SET s3_endpoint='bedrock.bio'")
+        self.conn.sql("SET s3_url_style='vhost'")
+        self.conn.sql("SET s3_use_ssl=true")
+        self.conn.sql("SET s3_region='auto'")
         return self.conn
 
     def reset(self):
@@ -130,7 +107,6 @@ class Config:
             self.conn.close()
         self.manifest = None
         self.namespaces = None
-        self.credentials = None
         self.conn = None
 
 

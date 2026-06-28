@@ -11,7 +11,7 @@ load_table(name)
 }
 \value{
 A lazy \code{tbl} backed by DuckDB, compatible with dplyr verbs.
-Use \code{describe_table()} to see partition columns and per-column allowed
+Use \code{describe_table()} to see partition columns and their allowed
 values; filter on partition columns for fastest reads.
 }
 \description{

@@ -12,6 +12,8 @@ jobs:
   test:
     name: python-test-${{ matrix.config.os }}-${{ matrix.config.python }}
     runs-on: ${{ matrix.config.os }}
+    env:
+      BB_ENV: dev
     defaults:
       run:
         working-directory: python
