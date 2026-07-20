@@ -14,7 +14,7 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
     steps:
       - name: check-out-repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
       - name: install-r
         uses: r-lib/actions/setup-r@v2
         with:
@@ -36,7 +36,7 @@ jobs:
       contents: write
     steps:
       - name: check-out-repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: install-r
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
@@ -48,6 +48,6 @@ jobs:
       - name: build-package
         run: R CMD build r/
       - name: upload-release-asset
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
         with:
           files: bedrockbio_*.tar.gz
